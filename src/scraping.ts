@@ -1,89 +1,112 @@
 import type { PuppeteerExtra } from "puppeteer-extra";
 import config from "./config";
+import fs from "fs";
 
 export default async function scraping(puppeteer: PuppeteerExtra) {
-    puppeteer
-        .launch({
-            headless: true,
-            args: ["--no-sandbox", "--disable-gpu", "--disable-extensions"],
-        })
-        .then(async (browser) => {
-            const page = await browser.newPage();
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-gpu", "--disable-extensions"],
+    });
 
-            await page.goto(`${config.baseUrl}NBUj23nE65Y`, {
-                waitUntil: "domcontentloaded",
-            });
+    const page = await browser.newPage();
 
-            // Take screenshot and save to file
-            await page.screenshot({ path: "screenshot.png", fullPage: true });
-            await page.waitForSelector("#chat");
+    await page.goto(`${config.baseUrl}NBUj23nE65Y`, {
+        waitUntil: "domcontentloaded",
+    });
 
-            const seenMessages = new Set<string>(); // Hindari duplikasi
+    await page.waitForSelector("yt-live-chat-app");
+    await page.screenshot({ path: "screenshot.png", fullPage: true });
 
-            for (let i = 0; i < 30; i++) {
-                const messages = await page.evaluate(() => {
-                    const nodes = Array.from(
-                        document.querySelectorAll(
-                            "yt-live-chat-text-message-renderer"
-                        )
-                    );
+    const seenMessages = new Set<string>();
+    const allMessages: any[] = [];
 
-                    return nodes.map((node) => {
-                        const author =
-                            node
-                                .querySelector("#author-name")
-                                ?.textContent?.trim() || "";
+    console.log("🔄 Scraping started. Writing to chat_output.json...");
 
-                        const message =
-                            node
-                                .querySelector("#message")
-                                ?.textContent?.trim() || "";
+    while (true) {
+        try {
+            const result = await page.evaluate(() => {
+                const nodes = Array.from(
+                    document.querySelectorAll(
+                        "yt-live-chat-text-message-renderer"
+                    )
+                );
 
-                        const photoUrl =
-                            (
-                                node.querySelector(
-                                    "#img"
-                                ) as HTMLImageElement | null
-                            )?.src || "";
+                const offlineNotice = document.querySelector(
+                    "yt-formatted-string.style-scope.yt-live-chat-message-renderer"
+                );
 
-                        const authorType =
-                            node.getAttribute("author-type") || "viewer";
-
-                        const timestamp =
-                            node
-                                .querySelector("#timestamp")
-                                ?.textContent?.trim() || "";
-
-                        return {
-                            author,
-                            message,
-                            photoUrl,
-                            authorType,
-                            timestamp,
-                        };
-                    });
-                });
-
-                const newOnes = messages.filter((msg) => {
-                    const key = `${msg.timestamp}-${msg.author}-${msg.message}`;
-                    if (seenMessages.has(key)) return false;
-                    seenMessages.add(key);
-                    return true;
-                });
-
-                if (newOnes.length > 0) {
-                    console.log(`--- Update ---`);
-                    for (const msg of newOnes) {
-                        console.log(
-                            `[${msg.timestamp}] (${msg.authorType}) ${msg.author}: ${msg.message}`
-                        );
-                        console.log(`    Avatar: ${msg.photoUrl}`);
-                    }
+                if (
+                    offlineNotice &&
+                    /chat (is disabled|turned off|unavailable|ended)/i.test(
+                        offlineNotice.textContent || ""
+                    )
+                ) {
+                    return { offlineDetected: true, messages: [] };
                 }
 
-                await new Promise((res) => setTimeout(res, 2000)); // tiap 2 detik
+                const messages = nodes.map((node) => {
+                    const author =
+                        node
+                            .querySelector("#author-name")
+                            ?.textContent?.trim() || "";
+
+                    const message =
+                        node.querySelector("#message")?.textContent?.trim() ||
+                        "";
+
+                    const photoUrl =
+                        (node.querySelector("#img") as HTMLImageElement | null)
+                            ?.src || "";
+
+                    const authorType =
+                        node.getAttribute("author-type") || "viewer";
+
+                    const timestamp =
+                        node.querySelector("#timestamp")?.textContent?.trim() ||
+                        "";
+
+                    return {
+                        author,
+                        message,
+                        photoUrl,
+                        isOwner: authorType === "owner",
+                        isModerator: authorType === "moderator",
+                        isMember: authorType === "member",
+                        timestamp,
+                    };
+                });
+
+                return { offlineDetected: false, messages };
+            });
+
+            if (result.offlineDetected) {
+                console.log("❌ Live chat is offline or ended.");
+                break;
             }
 
-            await browser.close();
-        });
+            const newMessages = result.messages.filter((msg) => {
+                const key = `${msg.timestamp}-${msg.author}-${msg.message}`;
+                if (seenMessages.has(key)) return false;
+                seenMessages.add(key);
+                return true;
+            });
+
+            if (newMessages.length > 0) {
+                console.log(...newMessages);
+                allMessages.push(...newMessages);
+                fs.writeFileSync(
+                    "chat_output.json",
+                    JSON.stringify(allMessages, null, 2),
+                    "utf-8"
+                );
+            }
+
+            await new Promise((res) => setTimeout(res, 2000));
+        } catch (err) {
+            console.error("❌ Error scraping chat:", err);
+            break;
+        }
+    }
+
+    await browser.close();
 }
