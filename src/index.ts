@@ -1,41 +1,76 @@
-import { filterNewMessages, processAndSaveMessages } from './utils/messageProcessor';
-import type { ScrapeResult } from './types/chat';
+import { scrapeLiveChat } from './scrapper';
 import type { ChatMessage } from './types/chat';
+import { getLiveVideoIdFromUsername } from './utils/resolve';
 
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { initializeBrowserAndPage } from './utils/browser';
-import puppeteer from 'puppeteer-extra';
-import { scrapeChatMessages } from './lib/chatScraper';
+const clients = new Map<WebSocket, string>();
+const activeScrapers = new Map<string, boolean>();
 
-puppeteer.use(StealthPlugin());
+Bun.serve({
+  port: 3000,
+  fetch(req, server) {
+    const { pathname } = new URL(req.url);
 
-(async () => {
-  const { browser, page } = await initializeBrowserAndPage(puppeteer);
+    // WebSocket endpoint: /live/:videoId
+    if (req.headers.get('upgrade') === 'websocket' && pathname.startsWith('/live/')) {
+      return server.upgrade(req, { data: { pathname } })
+        ? undefined
+        : new Response('Upgrade failed', { status: 400 });
+    }
 
-  const seenMessages = new Set<string>();
-  //   const allMessages: ChatMessage[] = [];
+    return new Response('WebSocket server for YouTube Live Chat');
+  },
+  websocket: {
+    async open(ws) {
+      const { pathname } = ws.data as { pathname: string };
+      const input = pathname.split('/').pop();
 
-  console.log('🔄 Scraping started.');
-
-  while (true) {
-    try {
-      const result: ScrapeResult = await scrapeChatMessages(page);
-
-      if (result.offlineDetected) {
-        console.log('❌ Live chat is offline or ended.');
-        break;
+      if (!input) {
+        ws.send('❌ Invalid input: missing YouTube username or video ID');
+        ws.close();
+        return;
       }
 
-      const newMessages = await filterNewMessages(result.messages, seenMessages);
+      // Try to resolve username → videoId, fallback to input directly
+      const liveId = (await getLiveVideoIdFromUsername(input)) || input;
+      clients.set(ws, liveId);
+      console.log(`✅ Client connected for Live ID: ${liveId}`);
 
-      await processAndSaveMessages(newMessages);
+      // Start scraper only once per liveId
+      if (!activeScrapers.has(liveId)) {
+        activeScrapers.set(liveId, true);
 
-      await new Promise((res) => setTimeout(res, 2000));
-    } catch (err) {
-      console.error('❌ Error scraping chat:', err);
-      break;
-    }
-  }
+        scrapeLiveChat(liveId, (messages: ChatMessage[], offline: boolean) => {
+          if (offline) {
+            console.log(`🛑 Live chat offline: ${liveId}`);
 
-  await browser.close();
-})();
+            // Disconnect all clients for this video
+            for (const [client, vId] of clients.entries()) {
+              if (vId === liveId && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ offlineDetected: true }));
+                client.close();
+                clients.delete(client);
+              }
+            }
+
+            activeScrapers.delete(liveId);
+            return;
+          }
+
+          // Broadcast to clients subscribed to this videoId
+          for (const [client, vId] of clients.entries()) {
+            if (vId === liveId && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(messages));
+            }
+          }
+        });
+      }
+    },
+    close(ws) {
+      clients.delete(ws);
+      console.log('🔌 Client disconnected');
+    },
+    message(ws, message) {
+      console.log(`📨 Message received: ${message}`);
+    },
+  },
+});
