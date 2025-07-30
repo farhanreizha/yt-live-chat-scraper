@@ -1,5 +1,5 @@
 import type { Page } from 'puppeteer';
-import type { ChatMessage, ScrapeResult, Emoji, Message, Author } from '../types/chat';
+import type { ChatMessage, ScrapeResult, Message, Author } from '../types/chat';
 
 export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
