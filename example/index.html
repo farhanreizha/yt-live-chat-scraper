@@ -10,7 +10,7 @@
     <div class="chat-container flex-1 overflow-y-auto p-3 space-y-3">
       <!-- Sample Chat Messages -->
       <div
-        class="chat-message bg-gray-800 bg-opacity-70 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50"
+        class="chat-message bg-gray-800 bg-opacity-50 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50 hidden"
       >
         <div class="flex items-start space-x-2">
           <img
@@ -20,20 +20,20 @@
           />
           <div class="message-container">
             <div class="flex items-center space-x-2 author">
-              <span class="author-name font-semibold text-gray-100">GamerPro123</span>
-              <span class="badge bg-purple-500 text-white px-2 rounded-full author-badges hidden"
-                >MOD</span
-              >
+              <span class="author-name font-semibold text-gray-100"></span>
+              <span
+                class="badge bg-purple-500 text-white px-2 rounded-full author-badges hidden"
+              ></span>
             </div>
-            <p class="text-sm mt-1 message">Hey everyone! How's the stream going so far?</p>
+            <p class="text-sm mt-1 message"></p>
           </div>
         </div>
       </div>
     </div>
 
     <script>
-      const videoId = 'set1awanade';
-      // const videoId = 'ybrap';
+      // const videoId = 'PinkuRimu';
+      const videoId = 'putrirp';
       const socket = new WebSocket(`ws://localhost:3000/live/${videoId}`);
 
       socket.onopen = () => {
@@ -58,25 +58,40 @@
 
           const authorName = newItemMessage.querySelector('.author-name');
           const message = newItemMessage.querySelector('.message');
-          const authorBadges = document.querySelector('.author-badges');
+          const authorBadges = newItemMessage.querySelector('.author-badges');
           const isMember = msg.isMember;
           const isModerator = msg.isModerator;
           const isOwner = msg.isOwner;
 
-          if (isMember && isModerator && isOwner) authorBadges.classList.remove('hidden');
+          // Show badges if user has any special status
+          if (authorBadges) {
+            if (isMember || isModerator || isOwner) authorBadges.classList.remove('hidden');
+            else authorBadges.classList.add('hidden');
+          }
 
-          authorBadges.innerHTML = isMember ? 'Member' : isModerator ? 'Mod' : isOwner && 'Owner';
+          // Set badge text based on user status priority
+          if (isOwner) {
+            authorBadges.innerHTML = 'Owner';
+          } else if (isModerator) {
+            authorBadges.innerHTML = 'Mod';
+          } else if (isMember) {
+            authorBadges.innerHTML = 'Member';
+          }
 
           if (authorName) {
             const name = msg.author.name.includes('@')
               ? msg.author.name.split('@')[1]
               : msg.author.name;
             authorName.textContent = name;
-            isMember
-              ? authorName.classList.add('text-green-400')
-              : isModerator
-              ? authorName.classList.add('text-blue-600')
-              : isOwner && authorName.classList.add('text-yellow-500');
+            // Hapus semua kelas warna yang mungkin ada sebelumnya
+            authorName.classList.remove('text-green-400', 'text-blue-400', 'text-yellow-500');
+            if (isMember) {
+              authorName.classList.add('text-green-400');
+            } else if (isModerator) {
+              authorName.classList.add('text-blue-400');
+            } else if (isOwner) {
+              authorName.classList.add('text-yellow-500');
+            }
           }
           if (message) {
             let messageHtml = '';

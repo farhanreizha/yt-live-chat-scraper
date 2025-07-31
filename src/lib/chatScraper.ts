@@ -1,6 +1,12 @@
 import type { Page } from 'puppeteer';
-import type { ChatMessage, ScrapeResult, Message, ChatAuthorRole, Emoji } from '../types/chat';
-
+import type {
+  ChatMessage,
+  ScrapeResult,
+  Message,
+  ChatAuthorRole,
+  Emoji,
+  Badges,
+} from '../types/chat';
 
 export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
@@ -17,8 +23,8 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       return { offlineDetected: true, messages: [] };
     }
 
-    const messages = nodes.map((node) => {
-      let authorName = node.querySelector('#author-name')?.textContent?.trim();
+    const messages = nodes.slice(0, 10).map((node) => {
+      const authorName = node.querySelector('#author-name')?.textContent?.trim();
 
       const messageNode = node.querySelector('#message');
 
@@ -60,29 +66,27 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       const emojis = Array.from(emojiMap.values());
       const badges = Array.from(badgeMap.values());
 
-      let messageText = '';
+      const messageText = messageNode
+        ? Array.from(messageNode.childNodes)
+            .map((child) => {
+              if (child.nodeType === Node.TEXT_NODE) {
+                return child.textContent?.trim() || '';
+              } else if (
+                child.nodeType === Node.ELEMENT_NODE &&
+                (child as Element).tagName === 'IMG'
+              ) {
+                const emoji = (child as Element).getAttribute('data-emoji-id')
+                  ? (child as Element).getAttribute('shared-tooltip-text')
+                  : (child as Element).getAttribute('alt');
 
-      if (messageNode) {
-        messageText = Array.from(messageNode.childNodes)
-          .map((child) => {
-            if (child.nodeType === Node.TEXT_NODE) {
-              return child.textContent?.trim() || '';
-            } else if (
-              child.nodeType === Node.ELEMENT_NODE &&
-              (child as Element).tagName === 'IMG'
-            ) {
-              const emoji = (child as Element).getAttribute('data-emoji-id')
-                ? (child as Element).getAttribute('shared-tooltip-text')
-                : (child as Element).getAttribute('alt');
-
-              return emoji || '';
-            }
-            return '';
-          })
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-      }
+                return emoji || '';
+              }
+              return '';
+            })
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+        : '';
 
       const hasEmoji = emojis.length > 0;
 
@@ -115,6 +119,6 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       };
     });
 
-    return { offlineDetected: false, messages: messages as ChatMessage[] };
+    return { offlineDetected: false, messages: messages as unknown as ChatMessage[] };
   });
 }

@@ -14,7 +14,6 @@ export type Message = {
   emojis?: Emoji[];
 };
 
-
 export interface Badges {
   type: 'moderator' | 'member';
   text: string;
@@ -30,7 +29,7 @@ export interface ChatMessage {
   isModerator: boolean;
   isMember: boolean;
   timestamp: string;
-};
+}
 
 export type ScrapeResult = {
   offlineDetected: boolean;

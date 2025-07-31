@@ -14,23 +14,31 @@ export async function scrapeLiveChat(
 ) {
   const { page } = await initializeBrowserAndPage(puppeteer, liveId);
   const seenMessages = new Set<string>();
-  const pollInterval = 1000; // in ms
+  const pollInterval = 500; // Reduced from 1500ms to 500ms for faster updates
 
   const poll = async () => {
     try {
+      const scrapeStartTime = Date.now();
       const result: ScrapeResult = await scrapeChatMessages(page);
+      const scrapeEndTime = Date.now();
+      
+      console.log(`[${new Date().toISOString()}] 📊 Scraped ${result.messages.length} messages in ${scrapeEndTime - scrapeStartTime}ms`);
 
       if (result.offlineDetected) {
+        console.log(`[${new Date().toISOString()}] 🛑 Live chat detected as offline`);
         callback([], true); // Notify offline
         return;
       }
 
       const newMessages = await filterNewMessages(result.messages, seenMessages);
       if (newMessages.length > 0) {
+        console.log(`[${new Date().toISOString()}] 📤 Sending ${newMessages.length} new messages to WebSocket clients`);
         callback(newMessages, false);
+      } else {
+        console.log(`[${new Date().toISOString()}] ℹ️ No new messages found`);
       }
     } catch (err) {
-      console.error('❌ Error scraping chat:', err);
+      console.error(`[${new Date().toISOString()}] ❌ Error scraping chat:`, err);
       callback([], true); // treat error as offline for safety
     }
 

@@ -32,16 +32,18 @@ Bun.serve({
 
       // Try to resolve username → videoId, fallback to input directly
       const liveId = (await getLiveVideoIdFromUsername(input)) || input;
-      clients.set(ws, liveId);
-      console.log(`✅ Client connected for Live ID: ${liveId}`);
+      clients.set(ws as unknown as WebSocket, liveId);
+      console.log(`[${new Date().toISOString()}] ✅ Client connected for Live ID: ${liveId} (Total clients: ${clients.size})`);
 
       // Start scraper only once per liveId
       if (!activeScrapers.has(liveId)) {
         activeScrapers.set(liveId, true);
 
         scrapeLiveChat(liveId, (messages: ChatMessage[], offline: boolean) => {
+          const broadcastStartTime = Date.now();
+          
           if (offline) {
-            console.log(`🛑 Live chat offline: ${liveId}`);
+            console.log(`[${new Date().toISOString()}] 🛑 Live chat offline: ${liveId}`);
 
             // Disconnect all clients for this video
             for (const [client, vId] of clients.entries()) {
@@ -57,16 +59,21 @@ Bun.serve({
           }
 
           // Broadcast to clients subscribed to this videoId
+          let clientCount = 0;
           for (const [client, vId] of clients.entries()) {
             if (vId === liveId && client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify(messages));
+              clientCount++;
             }
           }
+          
+          const broadcastEndTime = Date.now();
+          console.log(`[${new Date().toISOString()}] 📡 Broadcasted ${messages.length} messages to ${clientCount} clients in ${broadcastEndTime - broadcastStartTime}ms`);
         });
       }
     },
     close(ws) {
-      clients.delete(ws);
+      clients.delete(ws as unknown as WebSocket);
       console.log('🔌 Client disconnected');
     },
     message(ws, message) {
