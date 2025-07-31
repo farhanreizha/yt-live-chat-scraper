@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Live Chat Viewer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+
+  <body class="w-full h-96">
+    <!-- Chat Messages Container -->
+    <div class="chat-container flex-1 overflow-y-auto p-3 space-y-3">
+      <!-- Sample Chat Messages -->
+      <div
+        class="chat-message bg-gray-800 bg-opacity-70 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50"
+      >
+        <div class="flex items-start space-x-2">
+          <img
+            src="https://i.pravatar.cc/40?img=1"
+            alt="User"
+            class="w-8 h-8 rounded-full hidden avatar"
+          />
+          <div class="message-container">
+            <div class="flex items-center space-x-2 author">
+              <span class="author-name font-semibold text-gray-100">GamerPro123</span>
+              <span class="badge bg-purple-500 text-white px-2 rounded-full author-badges hidden"
+                >MOD</span
+              >
+            </div>
+            <p class="text-sm mt-1 message">Hey everyone! How's the stream going so far?</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const videoId = 'set1awanade';
+      // const videoId = 'ybrap';
+      const socket = new WebSocket(`ws://localhost:3000/live/${videoId}`);
+
+      socket.onopen = () => {
+        console.log('Connected to server');
+      };
+
+      socket.onmessage = (event) => {
+        const messagesData = JSON.parse(event.data);
+        const chatContainer = document.querySelector('.chat-container');
+
+        // Pastikan elemen template ditemukan sebelum mencoba mengkloningnya
+        const itemMessageTemplate = document.querySelector('.chat-message');
+
+        if (!itemMessageTemplate) {
+          console.error('Error: Template element with class .chat-message not found.');
+          return; // Hentikan eksekusi jika template tidak ditemukan
+        }
+
+        messagesData.forEach((msg) => {
+          const newItemMessage = itemMessageTemplate.cloneNode(true); // Kloning template
+          newItemMessage.classList.remove('hidden'); // Jadikan terlihat
+
+          const authorName = newItemMessage.querySelector('.author-name');
+          const message = newItemMessage.querySelector('.message');
+          const authorBadges = document.querySelector('.author-badges');
+          const isMember = msg.isMember;
+          const isModerator = msg.isModerator;
+          const isOwner = msg.isOwner;
+
+          if (isMember && isModerator && isOwner) authorBadges.classList.remove('hidden');
+
+          authorBadges.innerHTML = isMember ? 'Member' : isModerator ? 'Mod' : isOwner && 'Owner';
+
+          if (authorName) {
+            const name = msg.author.name.includes('@')
+              ? msg.author.name.split('@')[1]
+              : msg.author.name;
+            authorName.textContent = name;
+            isMember
+              ? authorName.classList.add('text-green-400')
+              : isModerator
+              ? authorName.classList.add('text-blue-600')
+              : isOwner && authorName.classList.add('text-yellow-500');
+          }
+          if (message) {
+            let messageHtml = '';
+            if (msg.message) {
+              if (msg.message.runs) {
+                msg.message.runs.forEach((run) => {
+                  if (run.text) {
+                    messageHtml += run.text;
+                  } else if (run.emoji && run.emoji.image && run.emoji.image.length > 0) {
+                    const emojiUrl = run.emoji.image[run.emoji.image.length - 1].url;
+                    messageHtml += `<img src="${emojiUrl}" alt="emoji" class="inline-block h-5 w-5 align-text-bottom">`;
+                  }
+                });
+              } else if (msg.message.text) {
+                messageHtml = msg.message.text;
+                if (msg.message.emojis && msg.message.emojis.length > 0) {
+                  const emojiMap = new Map();
+                  msg.message.emojis.forEach((emoji) => {
+                    if (emoji.text && emoji.url) {
+                      emojiMap.set(emoji.text, emoji.url);
+                    }
+                  });
+
+                  emojiMap.forEach((url, text) => {
+                    const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escapedText, 'g');
+                    messageHtml = messageHtml.replace(
+                      regex,
+                      `<img src="${url}" alt="${text}" class="inline-block h-5 w-5 align-text-bottom">`,
+                    );
+                  });
+                }
+              }
+            }
+            message.innerHTML = messageHtml;
+          }
+
+          chatContainer.appendChild(newItemMessage); // Tambahkan elemen baru ke daftar obrolan
+        });
+      };
+
+      socket.onclose = () => {
+        console.log('Disconnected');
+        const chatList = document.getElementById('chat');
+        chatList.innerHTML = '<li>Live ended</li>';
+      };
+    </script>
+  </body>
+</html>

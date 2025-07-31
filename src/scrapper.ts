@@ -14,7 +14,7 @@ export async function scrapeLiveChat(
 ) {
   const { page } = await initializeBrowserAndPage(puppeteer, liveId);
   const seenMessages = new Set<string>();
-  const pollInterval = 1500; // in ms
+  const pollInterval = 1000; // in ms
 
   const poll = async () => {
     try {

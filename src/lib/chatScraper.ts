@@ -1,6 +1,6 @@
-import type { Author, Badges, ChatMessage, Message, ScrapeResult } from '../types/chat';
-
 import type { Page } from 'puppeteer';
+import type { ChatMessage, ScrapeResult, Message, ChatAuthorRole, Emoji } from '../types/chat';
+
 
 export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
@@ -18,12 +18,12 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
     }
 
     const messages = nodes.map((node) => {
-      const author = node.querySelector('#author-name')?.textContent?.trim() || '';
+      let authorName = node.querySelector('#author-name')?.textContent?.trim();
 
       const messageNode = node.querySelector('#message');
 
       const emojiImgs = messageNode?.querySelectorAll('img.emoji') || [];
-      const emojiMap = new Map<string, { text: string; url: string }>();
+      const emojiMap = new Map<string, Emoji>();
 
       const authorBadge = node.querySelectorAll('#chat-badges yt-live-chat-author-badge-renderer');
       const badgeMap = new Map<string, { type: string; text: string; url?: string }>();
@@ -31,7 +31,7 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       emojiImgs.forEach((img) => {
         if (!img.getAttribute('data-emoji-id')) return;
         const text = img.getAttribute('shared-tooltip-text');
-        const url = img.getAttribute('src') || '';
+        const url = img.getAttribute('src');
 
         if (text && !emojiMap.has(text)) {
           emojiMap.set(text, { text, url });
@@ -87,19 +87,21 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       const hasEmoji = emojis.length > 0;
 
       const photoUrl = (node.querySelector('#img') as HTMLImageElement | null)?.src || '';
-      const authorType = (node.getAttribute('author-type') as Author) || 'viewer';
+      const authorType = (node.getAttribute('author-type') as ChatAuthorRole) || 'viewer';
       const timestamp = node.querySelector('#timestamp')?.textContent?.trim() || '';
 
-      let message: Message = {
-        text: messageText,
-      };
+      const message: Message = hasEmoji
+        ? {
+            text: messageText,
+            emojis,
+          }
+        : {
+            text: messageText,
+          };
 
-      if (hasEmoji) {
-        message = {
-          text: messageText,
-          emojis,
-        };
-      }
+      const author = {
+        name: authorName,
+      };
 
       return {
         author,
