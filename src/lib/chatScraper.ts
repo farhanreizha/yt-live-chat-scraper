@@ -1,12 +1,15 @@
-import type { Page } from 'puppeteer';
 import type {
-  ChatMessage,
-  ScrapeResult,
-  Message,
-  ChatAuthorRole,
-  Emoji,
+  Author,
+  BadgeAuthor,
   Badges,
+  ChatAuthorRole,
+  ChatMessage,
+  Emoji,
+  Message,
+  ScrapeResult,
 } from '../types/chat';
+
+import type { Page } from 'puppeteer';
 
 export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
@@ -23,7 +26,7 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       return { offlineDetected: true, messages: [] };
     }
 
-    const messages = nodes.slice(0, 10).map((node) => {
+    const messages = nodes.map((node) => {
       const authorName = node.querySelector('#author-name')?.textContent?.trim();
 
       const messageNode = node.querySelector('#message');
@@ -32,7 +35,7 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       const emojiMap = new Map<string, Emoji>();
 
       const authorBadge = node.querySelectorAll('#chat-badges yt-live-chat-author-badge-renderer');
-      const badgeMap = new Map<string, { type: string; text: string; url?: string }>();
+      const badgeMap = new Map<string, Badges>();
 
       emojiImgs.forEach((img) => {
         if (!img.getAttribute('data-emoji-id')) return;
@@ -45,20 +48,12 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       });
 
       authorBadge.forEach((badge) => {
-        const type = (badge.getAttribute('type') as 'member') || 'moderator';
+        const type = badge.getAttribute('type') as BadgeAuthor;
         const text = String(badge.getAttribute('shared-tooltip-text'));
         const url = badge.querySelector('img')?.getAttribute('src');
 
-        const badgeTemp: Badges = {
-          type,
-          text,
-        };
-
-        if (url) {
-          badgeTemp.url = url;
-        }
-
-        if (type && text && url) {
+        const badgeTemp: Badges = url ? { type, text, url } : { type, text };
+        if (type && text) {
           badgeMap.set(text, badgeTemp);
         }
       });
@@ -103,14 +98,14 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
             text: messageText,
           };
 
-      const author = {
-        name: authorName,
+      const author: Author = {
+        name: authorName as string,
+        photo: photoUrl,
       };
 
       return {
         author,
         message,
-        photoUrl,
         badges: badges.length > 0 ? badges : undefined,
         isOwner: authorType === 'owner',
         isModerator: authorType === 'moderator',

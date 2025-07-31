@@ -1,7 +1,9 @@
 export type ChatAuthorRole = 'owner' | 'moderator' | 'member';
+export type BadgeAuthor = 'moderator' | 'member';
 
 export type Author = {
   name: string;
+  photo: string;
 };
 
 export type Emoji = {
@@ -15,16 +17,15 @@ export type Message = {
 };
 
 export interface Badges {
-  type: 'moderator' | 'member';
+  type: string;
   text: string;
   url?: string;
 }
 
 export interface ChatMessage {
-  author: string;
+  author: Author;
   message: Message;
   badges?: Badges[];
-  photoUrl: string;
   isOwner: boolean;
   isModerator: boolean;
   isMember: boolean;
