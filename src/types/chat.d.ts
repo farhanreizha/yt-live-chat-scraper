@@ -1,26 +1,30 @@
-export type Author = 'owner' | 'moderator' | 'member';
+export type ChatAuthorRole = 'owner' | 'moderator' | 'member';
 
-export interface Emoji {
+export type Author = {
+  name: string;
+};
+
+export type Emoji = {
   text: string;
-  url: string;
-}
+  url: string | null;
+};
 
-export interface Message {
+export type Message = {
   text: string;
   emojis?: Emoji[];
-}
+};
 
-export interface ChatMessage {
-  author: string;
+export type ChatMessage = {
+  author: Author;
   message: Message;
   photoUrl: string;
   isOwner: boolean;
   isModerator: boolean;
   isMember: boolean;
   timestamp: string;
-}
+};
 
-export interface ScrapeResult {
+export type ScrapeResult = {
   offlineDetected: boolean;
   messages: ChatMessage[];
-}
+};
