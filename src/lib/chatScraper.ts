@@ -1,6 +1,7 @@
 import type { Page } from 'puppeteer';
 import type { ChatMessage, ScrapeResult, Message, ChatAuthorRole, Emoji } from '../types/chat';
 
+
 export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
     const nodes = Array.from(document.querySelectorAll('yt-live-chat-text-message-renderer'));
@@ -20,8 +21,12 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       let authorName = node.querySelector('#author-name')?.textContent?.trim();
 
       const messageNode = node.querySelector('#message');
+
       const emojiImgs = messageNode?.querySelectorAll('img.emoji') || [];
       const emojiMap = new Map<string, Emoji>();
+
+      const authorBadge = node.querySelectorAll('#chat-badges yt-live-chat-author-badge-renderer');
+      const badgeMap = new Map<string, { type: string; text: string; url?: string }>();
 
       emojiImgs.forEach((img) => {
         if (!img.getAttribute('data-emoji-id')) return;
@@ -33,7 +38,27 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
         }
       });
 
+      authorBadge.forEach((badge) => {
+        const type = (badge.getAttribute('type') as 'member') || 'moderator';
+        const text = String(badge.getAttribute('shared-tooltip-text'));
+        const url = badge.querySelector('img')?.getAttribute('src');
+
+        const badgeTemp: Badges = {
+          type,
+          text,
+        };
+
+        if (url) {
+          badgeTemp.url = url;
+        }
+
+        if (type && text && url) {
+          badgeMap.set(text, badgeTemp);
+        }
+      });
+
       const emojis = Array.from(emojiMap.values());
+      const badges = Array.from(badgeMap.values());
 
       let messageText = '';
 
@@ -82,6 +107,7 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
         author,
         message,
         photoUrl,
+        badges: badges.length > 0 ? badges : undefined,
         isOwner: authorType === 'owner',
         isModerator: authorType === 'moderator',
         isMember: authorType === 'member',

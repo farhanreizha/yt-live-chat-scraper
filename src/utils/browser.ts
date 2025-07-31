@@ -10,10 +10,10 @@ export async function initializeBrowserAndPage(puppeteer: PuppeteerExtra, liveId
   const page = await browser.newPage();
 
   await page.goto(`${config.baseUrl}?v=${liveId}`, {
-    waitUntil: 'domcontentloaded',
+    waitUntil: 'networkidle2',
   });
 
-  //   await page.screenshot({ path: 'screenshot.png', fullPage: true });
+  await page.screenshot({ path: 'screenshot.png', fullPage: true });
 
   return { browser, page };
 }

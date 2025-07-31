@@ -14,9 +14,17 @@ export type Message = {
   emojis?: Emoji[];
 };
 
-export type ChatMessage = {
-  author: Author;
+
+export interface Badges {
+  type: 'moderator' | 'member';
+  text: string;
+  url?: string;
+}
+
+export interface ChatMessage {
+  author: string;
   message: Message;
+  badges?: Badges[];
   photoUrl: string;
   isOwner: boolean;
   isModerator: boolean;
