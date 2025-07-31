@@ -4,6 +4,10 @@ export type BadgeAuthor = 'moderator' | 'member';
 export type Author = {
   name: string;
   photo: string;
+  badges?: Badges[];
+  isOwner: boolean;
+  isModerator: boolean;
+  isMember: boolean;
 };
 
 export type Emoji = {
@@ -25,10 +29,6 @@ export interface Badges {
 export interface ChatMessage {
   author: Author;
   message: Message;
-  badges?: Badges[];
-  isOwner: boolean;
-  isModerator: boolean;
-  isMember: boolean;
   timestamp: string;
 }
 

@@ -101,15 +101,15 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
       const author: Author = {
         name: authorName as string,
         photo: photoUrl,
+        badges: badges.length > 0 ? badges : undefined,
+        isOwner: authorType === 'owner',
+        isModerator: authorType === 'moderator',
+        isMember: authorType === 'member',
       };
 
       return {
         author,
         message,
-        badges: badges.length > 0 ? badges : undefined,
-        isOwner: authorType === 'owner',
-        isModerator: authorType === 'moderator',
-        isMember: authorType === 'member',
         timestamp,
       };
     });

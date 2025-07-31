@@ -9,7 +9,7 @@ export async function initializeBrowserAndPage(puppeteer: PuppeteerExtra, liveId
 
   const page = await browser.newPage();
 
-  await page.goto(`${config.baseUrl}?v=${liveId}`, {
+  await page.goto(`${config.baseUrl}?v=${liveId}&is_popout=1`, {
     waitUntil: 'domcontentloaded',
   });
 
