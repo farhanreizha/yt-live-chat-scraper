@@ -1,7 +1,7 @@
-import { filterNewMessages } from './utils/messageProcessor';
 import type { ChatMessage, ScrapeResult } from './types/chat';
 
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { filterNewMessages } from './utils/messageProcessor';
 import { initializeBrowserAndPage } from './utils/browser';
 import puppeteer from 'puppeteer-extra';
 import { scrapeChatMessages } from './lib/chatScraper';
@@ -21,8 +21,12 @@ export async function scrapeLiveChat(
       const scrapeStartTime = Date.now();
       const result: ScrapeResult = await scrapeChatMessages(page);
       const scrapeEndTime = Date.now();
-      
-      console.log(`[${new Date().toISOString()}] 📊 Scraped ${result.messages.length} messages in ${scrapeEndTime - scrapeStartTime}ms`);
+
+      console.log(
+        `[${new Date().toISOString()}] 📊 Scraped ${result.messages.length} messages in ${
+          scrapeEndTime - scrapeStartTime
+        }ms`,
+      );
 
       if (result.offlineDetected) {
         console.log(`[${new Date().toISOString()}] 🛑 Live chat detected as offline`);
@@ -32,7 +36,11 @@ export async function scrapeLiveChat(
 
       const newMessages = await filterNewMessages(result.messages, seenMessages);
       if (newMessages.length > 0) {
-        console.log(`[${new Date().toISOString()}] 📤 Sending ${newMessages.length} new messages to WebSocket clients`);
+        console.log(
+          `[${new Date().toISOString()}] 📤 Sending ${
+            newMessages.length
+          } new messages to WebSocket clients`,
+        );
         callback(newMessages, false);
       } else {
         console.log(`[${new Date().toISOString()}] ℹ️ No new messages found`);
