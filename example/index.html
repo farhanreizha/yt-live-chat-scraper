@@ -2,15 +2,75 @@
 <html>
   <head>
     <title>Live Chat Viewer</title>
+    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      body {
+        font-size: 14px;
+      }
+      /* Custom CSS for animations and additional styling */
+      .chat-message {
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Badge styling */
+      .badge {
+        display: inline-block;
+        padding: 0.15rem 0.3rem;
+        border-radius: 0.25rem;
+        font-size: 0.7rem;
+        font-weight: bold;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .leaderboard {
+        display: inline-block;
+        padding: 0.15rem 0.3rem;
+        border-radius: 0.25rem;
+        font-size: 0.7rem;
+        font-weight: bold;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      /* Custom scrollbar */
+      .chat-container::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .chat-container::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .chat-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+      }
+    </style>
   </head>
 
-  <body class="w-full h-96">
+  <body class="w-full h-screen overflow-hidden flex flex-col">
     <!-- Chat Messages Container -->
     <div class="chat-container flex-1 overflow-y-auto p-3 space-y-3">
       <!-- Sample Chat Messages -->
       <div
-        class="chat-message bg-gray-800 bg-opacity-50 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50 hidden"
+        class="chat-message bg-gray-800/80 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50 hidden"
       >
         <div class="flex items-start space-x-2">
           <img
@@ -19,11 +79,10 @@
             class="w-8 h-8 rounded-full hidden avatar"
           />
           <div class="message-container">
-            <div class="flex items-center space-x-2 author">
+            <div class="flex items-center author">
               <span class="author-name font-semibold text-gray-100"></span>
-              <span
-                class="badge bg-purple-500 text-white px-2 rounded-full author-badges hidden"
-              ></span>
+              <span class="badge hidden space-x-1"></span>
+              <span class="leaderboard ml-1"></span>
             </div>
             <p class="text-sm mt-1 message"></p>
           </div>
@@ -32,7 +91,6 @@
     </div>
 
     <script>
-      // const videoId = 'PinkuRimu';
       const videoId = 'putrirp';
       const socket = new WebSocket(`ws://localhost:3000/live/${videoId}`);
 
@@ -53,75 +111,143 @@
         }
 
         messagesData.forEach((msg) => {
+          console.log(msg);
           const newItemMessage = itemMessageTemplate.cloneNode(true); // Kloning template
           newItemMessage.classList.remove('hidden'); // Jadikan terlihat
 
           const authorName = newItemMessage.querySelector('.author-name');
           const message = newItemMessage.querySelector('.message');
-          const authorBadges = newItemMessage.querySelector('.author-badges');
-          const isMember = msg.isMember;
-          const isModerator = msg.isModerator;
-          const isOwner = msg.isOwner;
+          const badge = newItemMessage.querySelector('.badge');
+          const avatar = newItemMessage.querySelector('.avatar');
+          const leaderboard = newItemMessage.querySelector('.leaderboard');
 
-          // Show badges if user has any special status
-          if (authorBadges) {
-            if (isMember || isModerator || isOwner) authorBadges.classList.remove('hidden');
-            else authorBadges.classList.add('hidden');
+          // Handle avatar from author.photo
+          if (avatar && msg.author && msg.author.photo) {
+            avatar.src = msg.author.photo.replace(/`/g, '').trim();
+            // avatar.classList.remove('hidden');
           }
 
-          // Set badge text based on user status priority
-          if (isOwner) {
-            authorBadges.innerHTML = 'Owner';
-          } else if (isModerator) {
-            authorBadges.innerHTML = 'Mod';
-          } else if (isMember) {
-            authorBadges.innerHTML = 'Member';
+          // Handle badges from author.badges array - prioritize badges array over boolean flags
+          const hasOwnerBadge = msg.author && msg.author.isOwner;
+
+          // Check actual badges in the badges array instead of relying on boolean flags
+          const moderatorBadge =
+            msg.author &&
+            msg.author.badges &&
+            msg.author.badges.find((b) => b.type === 'moderator');
+          const memberBadge =
+            msg.author && msg.author.badges && msg.author.badges.find((b) => b.type === 'member');
+          const verifiedBadge =
+            msg.author && msg.author.badges && msg.author.badges.find((b) => b.type === 'verified');
+
+          // Check if user has any badges to display
+          const hasAnyBadge = msg.author && msg.author.badges && msg.author.badges.length > 0;
+
+          // Show badges based on actual badges array content
+          if (badge && hasAnyBadge) {
+            const badgesToShow = [];
+
+            // Always show moderator badge first if present in badges array
+            if (moderatorBadge) {
+              badgesToShow.push({ badge: moderatorBadge, type: 'moderator' });
+            }
+
+            // Show membership badge if present in badges array (can be combined with moderator)
+            if (memberBadge) {
+              badgesToShow.push({ badge: memberBadge, type: 'member' });
+            }
+
+            // Show verified badge if present in badges array (can be combined with moderator)
+            if (verifiedBadge) {
+              badgesToShow.push({ badge: verifiedBadge, type: 'verified' });
+            }
+
+            if (badgesToShow.length > 0) {
+              // Clear existing badge content and create multiple badges
+              badge.innerHTML = '';
+              badgesToShow.forEach((badgeData, index) => {
+                const badgeElement = document.createElement('span');
+
+                if (badgeData.badge.url) {
+                  const badgeUrl = badgeData.badge.url.replace(/`/g, '').trim();
+                  badgeElement.innerHTML = `<img src="${badgeUrl}" alt="${badgeData.badge.text}" class="inline-block">`;
+                  badgeElement.classList.add('p-0', 'bg-transparent');
+                } else {
+                  badgeElement.textContent = badgeData.badge.text.replace(/`/g, '').trim();
+                  badgeElement.classList.remove('p-0', 'bg-transparent');
+                }
+
+                // Set styling based on badge type - match CSS styling
+                if (badgeData.type === 'moderator') {
+                  badgeElement.innerHTML = '<i class="fa-solid fa-wrench"></i>';
+                  // badgeElement.classList.add('bg-blue-500', 'text-blue-500', 'py-0.5', 'px-1');
+                  badgeElement.classList.add('text-blue-500');
+                  // } else if (badgeData.type === 'member') {
+                  // badgeElement.classList.add('bg-green-500', 'text-white', 'py-0.5', 'px-1');
+                } else if (badgeData.type === 'verified') {
+                  badgeElement.innerHTML = '<i class="fa-regular fa-circle-check"></i>';
+                  // badgeElement.classList.add('bg-gray-600', 'text-white', 'py-0.5', 'px-1');
+                }
+
+                badge.appendChild(badgeElement);
+              });
+
+              badge.classList.remove('hidden');
+            } else {
+              badge.classList.add('hidden');
+            }
+          } else if (badge) {
+            // Hide badge if no membership, verified, or moderator status
+            badge.classList.add('hidden');
           }
 
           if (authorName) {
-            const name = msg.author.name.includes('@')
-              ? msg.author.name.split('@')[1]
-              : msg.author.name;
-            authorName.textContent = name;
-            // Hapus semua kelas warna yang mungkin ada sebelumnya
-            authorName.classList.remove('text-green-400', 'text-blue-400', 'text-yellow-500');
-            if (isMember) {
-              authorName.classList.add('text-green-400');
-            } else if (isModerator) {
-              authorName.classList.add('text-blue-400');
-            } else if (isOwner) {
+            // const name =
+            //   msg.author && msg.author.name.includes('@')
+            //     ? msg.author.name.split('@')[1]
+            //     : msg.author.name;
+            authorName.textContent = msg.author.name;
+            // Remove all color classes
+            authorName.classList.remove(
+              'text-gray-100',
+              'text-green-500',
+              'text-blue-500',
+              'text-yellow-500',
+            );
+            if (hasOwnerBadge) {
               authorName.classList.add('text-yellow-500');
+            } else if (moderatorBadge) {
+              authorName.classList.add('text-blue-500');
+            } else if (memberBadge) {
+              authorName.classList.add('text-green-500');
             }
           }
+          // Handle leaderboard ranking
+          if (leaderboard && msg.leaderboard) {
+            leaderboard.textContent = msg.leaderboard.replace(/`/g, '').trim();
+            leaderboard.classList.remove('hidden');
+            leaderboard.classList.add('bg-purple-600', 'text-white', 'font-bold');
+          } else if (leaderboard) {
+            leaderboard.classList.add('hidden');
+          }
+
           if (message) {
             let messageHtml = '';
             if (msg.message) {
-              if (msg.message.runs) {
-                msg.message.runs.forEach((run) => {
-                  if (run.text) {
-                    messageHtml += run.text;
-                  } else if (run.emoji && run.emoji.image && run.emoji.image.length > 0) {
-                    const emojiUrl = run.emoji.image[run.emoji.image.length - 1].url;
-                    messageHtml += `<img src="${emojiUrl}" alt="emoji" class="inline-block h-5 w-5 align-text-bottom">`;
-                  }
-                });
-              } else if (msg.message.text) {
+              if (msg.message.text) {
                 messageHtml = msg.message.text;
                 if (msg.message.emojis && msg.message.emojis.length > 0) {
-                  const emojiMap = new Map();
                   msg.message.emojis.forEach((emoji) => {
                     if (emoji.text && emoji.url) {
-                      emojiMap.set(emoji.text, emoji.url);
+                      const text = emoji.text.replace(/`/g, '').trim();
+                      const url = emoji.url.replace(/`/g, '').trim();
+                      const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                      const regex = new RegExp(escapedText, 'g');
+                      messageHtml = messageHtml.replace(
+                        regex,
+                        `<img src="${url}" alt="${text}" class="inline-block h-5 w-5 align-text-bottom">`,
+                      );
                     }
-                  });
-
-                  emojiMap.forEach((url, text) => {
-                    const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(escapedText, 'g');
-                    messageHtml = messageHtml.replace(
-                      regex,
-                      `<img src="${url}" alt="${text}" class="inline-block h-5 w-5 align-text-bottom">`,
-                    );
                   });
                 }
               }
@@ -131,6 +257,13 @@
 
           chatContainer.appendChild(newItemMessage); // Tambahkan elemen baru ke daftar obrolan
         });
+
+        // Auto scroll to bottom when new messages arrive
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        // Limit to 50 messages - remove oldest messages when exceeding 50
+        while (chatContainer.children.length > 50) {
+          chatContainer.removeChild(chatContainer.children[0]);
+        }
       };
 
       socket.onclose = () => {
