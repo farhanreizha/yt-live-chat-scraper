@@ -13,7 +13,11 @@ import type { Page } from 'puppeteer';
 
 export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
-    const nodes = Array.from(document.querySelectorAll('yt-live-chat-text-message-renderer'));
+    const nodes = Array.from(
+      document.querySelectorAll(
+        'yt-live-chat-text-message-renderer, yt-live-chat-membership-item-renderer',
+      ),
+    );
 
     const offlineNotice = document.querySelector(
       'yt-formatted-string.style-scope.yt-live-chat-message-renderer',
@@ -28,13 +32,14 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
 
     const messages = nodes.map((node) => {
       const authorName = node.querySelector('#author-name')?.textContent?.trim();
-
       const messageNode = node.querySelector('#message');
 
       const emojiImgs = messageNode?.querySelectorAll('img.emoji') || [];
       const emojiMap = new Map<string, Emoji>();
 
-      const authorBadge = node.querySelectorAll('#chat-badges yt-live-chat-author-badge-renderer');
+      const authorBadge = node.querySelectorAll(
+        'yt-live-chat-author-chip yt-live-chat-author-badge-renderer',
+      );
       const badgeMap = new Map<string, Badges>();
 
       emojiImgs.forEach((img) => {
@@ -92,13 +97,28 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
         .querySelector('#before-content-buttons button')
         ?.getAttribute('aria-label');
 
+      const isMessageMembership =
+        node.tagName.toLowerCase() === 'yt-live-chat-membership-item-renderer';
+      const membershipTier = isMessageMembership
+        ? node.querySelector('#header-subtext')?.textContent
+        : undefined;
+      const membershipStatus = isMessageMembership
+        ? node.querySelector('#header-primary-text')?.textContent
+        : undefined;
+
       const message: Message = hasEmoji
         ? {
             text: messageText,
             emojis,
+            isMessageMembership,
+            membershipTier,
+            membershipStatus,
           }
         : {
             text: messageText,
+            isMessageMembership,
+            membershipTier,
+            membershipStatus,
           };
 
       const author: Author = {
