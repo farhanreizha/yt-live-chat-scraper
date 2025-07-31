@@ -10,9 +10,16 @@ export interface Message {
   emojis?: Emoji[];
 }
 
+export interface Badges {
+  type: 'moderator' | 'member';
+  text: string;
+  url?: string;
+}
+
 export interface ChatMessage {
   author: string;
   message: Message;
+  badges?: Badges[];
   photoUrl: string;
   isOwner: boolean;
   isModerator: boolean;
