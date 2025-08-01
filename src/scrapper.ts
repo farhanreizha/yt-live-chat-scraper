@@ -8,9 +8,9 @@ import type {
   Message,
   ScrapeResult,
 } from './types/chat';
+import { filterNewMessages, trimSeenMessages } from './utils/messageProcessor';
 
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { filterNewMessages } from './utils/messageProcessor';
 import { initializeBrowserAndPage } from './utils/browser';
 import puppeteer from 'puppeteer-extra';
 import { scrapeChatMessages } from './lib/chatScraper';
@@ -35,6 +35,10 @@ export async function scrapeLiveChat(
   // ✅ Expose callback ke dalam browser context
   await page.exposeFunction('onNewChatMessages', async (rawMessages: ChatMessage[]) => {
     const newMessages = await filterNewMessages(rawMessages, seenMessages);
+
+    // ✅ Trim jika lebih dari 10.000 pesan
+    trimSeenMessages(seenMessages, 10000);
+
     if (newMessages.length > 0) {
       console.log(
         `[${new Date().toISOString()}] 🧠 [OBSERVED] ${
@@ -169,7 +173,6 @@ export async function scrapeLiveChat(
       });
 
       if (newMessages.length > 0) {
-        // Kirim ke Node.js
         // @ts-ignore
         window.onNewChatMessages(newMessages);
       }
