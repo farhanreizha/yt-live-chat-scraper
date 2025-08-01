@@ -7,20 +7,37 @@ import type {
   Emoji,
   Message,
   ScrapeResult,
-} from '../types/chat';
+} from './types/chat';
+import { filterNewMessages, trimSeenMessages } from './utils/messageProcessor';
 
-import type { Page } from 'puppeteer';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { initializeBrowserAndPage } from './utils/browser';
+import puppeteer from 'puppeteer-extra';
+import { scrapeChatMessages } from './lib/chatScraper';
 
-export async function scrapeChatMessages(page: Page): Promise<void> {
+puppeteer.use(StealthPlugin());
+
+/**
+ * Memulai scraping live chat YouTube dengan Puppeteer.
+ * Menggunakan MutationObserver untuk mendeteksi pesan baru secara real-time.
+ * Jika offline terdeteksi, akan mengirimkan notifikasi ke callback.
+ *
+ * @param liveId ID dari live video YouTube
+ * @param callback Fungsi callback yang menerima pesan baru dan status offline
+ */
+export async function scrapeLiveChat(
+  liveId: string,
+  callback: (messages: ChatMessage[], offline: boolean) => void,
+) {
+  const { page } = await initializeBrowserAndPage(puppeteer, liveId);
+  const seenMessages = new Set<string>();
+
   // ✅ Expose callback ke dalam browser context
   await page.exposeFunction('onNewChatMessages', async (rawMessages: ChatMessage[]) => {
-    const seenMessages = new Set<string>();
-    const newMessages = rawMessages.filter((msg) => {
-      const id = msg.timestamp + msg.author.name + msg.message.text;
-      if (seenMessages.has(id)) return false;
-      seenMessages.add(id);
-      return true;
-    });
+    const newMessages = await filterNewMessages(rawMessages, seenMessages);
+
+    // ✅ Trim jika lebih dari 10.000 pesan
+    trimSeenMessages(seenMessages, 10000);
 
     if (newMessages.length > 0) {
       console.log(
@@ -28,6 +45,7 @@ export async function scrapeChatMessages(page: Page): Promise<void> {
           newMessages.length
         } new messages from MutationObserver`,
       );
+      callback(newMessages, false);
     }
   });
 

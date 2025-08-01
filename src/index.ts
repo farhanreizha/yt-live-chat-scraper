@@ -1,37 +1,83 @@
-import puppeteer from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import { scrapeChatMessages } from "./lib/chatScraper";
-import { initializeBrowserAndPage } from "./utils/browser";
-import { filterNewMessages, processAndSaveMessages } from "./utils/messageProcessor";
+import { scrapeLiveChat } from './scrapper';
+import type { ChatMessage } from './types/chat';
+import { getLiveVideoIdFromUsername } from './utils/resolve';
 
-puppeteer.use(StealthPlugin());
-(async () => {
-  const { browser, page } = await initializeBrowserAndPage(puppeteer);
+const clients = new Map<WebSocket, string>();
+const activeScrapers = new Map<string, boolean>();
 
-  const seenMessages = new Set<string>();
-  const allMessages: any[] = [];
+Bun.serve({
+  port: 3000,
+  fetch(req, server) {
+    const { pathname } = new URL(req.url);
 
-  console.log("🔄 Scraping started. Writing to chat_output.json...");
+    // WebSocket endpoint: /live/:videoId
+    if (req.headers.get('upgrade') === 'websocket' && pathname.startsWith('/live/')) {
+      return server.upgrade(req, { data: { pathname } })
+        ? undefined
+        : new Response('Upgrade failed', { status: 400 });
+    }
 
-  while (true) {
-    try {
-      const result = await scrapeChatMessages(page);
+    return new Response('WebSocket server for YouTube Live Chat');
+  },
+  websocket: {
+    async open(ws) {
+      const { pathname } = ws.data as { pathname: string };
+      const input = pathname.split('/').pop();
 
-      if (result.offlineDetected) {
-        console.log("❌ Live chat is offline or ended.");
-        break;
+      if (!input) {
+        ws.send('❌ Invalid input: missing YouTube username or video ID');
+        ws.close();
+        return;
       }
 
-      const newMessages = await filterNewMessages(result.messages, seenMessages);
+      // Try to resolve username → videoId, fallback to input directly
+      const liveId = (await getLiveVideoIdFromUsername(input)) || input;
+      clients.set(ws as unknown as WebSocket, liveId);
+      console.log(`[${new Date().toISOString()}] ✅ Client connected for Live ID: ${liveId} (Total clients: ${clients.size})`);
 
-      await processAndSaveMessages(newMessages, allMessages);
+      // Start scraper only once per liveId
+      if (!activeScrapers.has(liveId)) {
+        activeScrapers.set(liveId, true);
 
-      await new Promise((res) => setTimeout(res, 2000));
-    } catch (err) {
-      console.error("❌ Error scraping chat:", err);
-      break;
-    }
-  }
+        scrapeLiveChat(liveId, (messages: ChatMessage[], offline: boolean) => {
+          const broadcastStartTime = Date.now();
+          
+          if (offline) {
+            console.log(`[${new Date().toISOString()}] 🛑 Live chat offline: ${liveId}`);
 
-  await browser.close();
-})();
+            // Disconnect all clients for this video
+            for (const [client, vId] of clients.entries()) {
+              if (vId === liveId && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ offlineDetected: true }));
+                client.close();
+                clients.delete(client);
+              }
+            }
+
+            activeScrapers.delete(liveId);
+            return;
+          }
+
+          // Broadcast to clients subscribed to this videoId
+          let clientCount = 0;
+          for (const [client, vId] of clients.entries()) {
+            if (vId === liveId && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(messages));
+              clientCount++;
+            }
+          }
+          
+          const broadcastEndTime = Date.now();
+          console.log(`[${new Date().toISOString()}] 📡 Broadcasted ${messages.length} messages to ${clientCount} clients in ${broadcastEndTime - broadcastStartTime}ms`);
+        });
+      }
+    },
+    close(ws) {
+      clients.delete(ws as unknown as WebSocket);
+      console.log('🔌 Client disconnected');
+    },
+    message(ws, message) {
+      console.log(`📨 Message received: ${message}`);
+    },
+  },
+});
