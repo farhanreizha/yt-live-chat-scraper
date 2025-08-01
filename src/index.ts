@@ -1,6 +1,6 @@
-import { scrapeLiveChat } from './scrapper';
 import type { ChatMessage } from './types/chat';
 import { getLiveVideoIdFromUsername } from './utils/resolve';
+import { scrapeLiveChat } from './scrapper';
 
 const clients = new Map<WebSocket, string>();
 const activeScrapers = new Map<string, boolean>();
@@ -41,7 +41,7 @@ Bun.serve({
 
         scrapeLiveChat(liveId, (messages: ChatMessage[], offline: boolean) => {
           const broadcastStartTime = Date.now();
-          
+
           if (offline) {
             console.log(`[${new Date().toISOString()}] 🛑 Live chat offline: ${liveId}`);
 
@@ -66,7 +66,7 @@ Bun.serve({
               clientCount++;
             }
           }
-          
+
           const broadcastEndTime = Date.now();
           console.log(`[${new Date().toISOString()}] 📡 Broadcasted ${messages.length} messages to ${clientCount} clients in ${broadcastEndTime - broadcastStartTime}ms`);
         });
