@@ -34,7 +34,6 @@
       }
 
       /* Badge Components */
-      .badge,
       .leaderboard {
         display: inline-block;
         padding: 0.15rem 0.3rem;
@@ -74,26 +73,24 @@
   </head>
 
   <body class="w-full h-screen overflow-hidden flex flex-col">
-    <!-- Chat Container -->
+    <!-- Chat Messages Container -->
     <div class="chat-container flex-1 overflow-y-auto p-3 space-y-3">
-      <!-- Message Template -->
-      <div class="chat-message flex items-start space-x-2 hidden">
+      <!-- Sample Chat Messages -->
+      <div class="chat-message flex items-start space-x-2 text-black hidden">
         <img
           src="https://i.pravatar.cc/40?img=1"
           alt="User"
           class="w-8 h-8 rounded-full hidden avatar"
         />
         <div
-          class="message-wrapper flex items-start space-x-2 bg-gray-800/80 rounded-lg p-3 text-white shadow-lg"
+          class="message-container bg-gray-800/80 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50 max-w-screen w-full"
         >
-          <div class="message-content">
-            <div class="message-header flex items-center space-x-1">
-              <span class="author-name font-semibold text-gray-100"></span>
-              <span class="badge-container hidden space-x-1"></span>
-              <span class="leaderboard"></span>
-            </div>
-            <p class="message-text text-sm mt-1"></p>
+          <div class="flex items-center author space-x-2">
+            <span class="author-name font-semibold text-gray-100"></span>
+            <span class="badge-container hidden space-x-2"></span>
+            <span class="leaderboard"></span>
           </div>
+          <p class="text-sm mt-1 message-text"></p>
         </div>
       </div>
     </div>
@@ -102,7 +99,8 @@
     <script>
       // Configuration
       const CONFIG = {
-        videoId: 'nastasiadeline',
+        videoId: 'putrirp',
+        // videoId: 'TheJooomers',
         maxMessages: 50,
         serverUrl: 'ws://localhost:3000',
       };
@@ -194,11 +192,6 @@
           const messageEl = template.cloneNode(true);
           messageEl.classList.remove('hidden');
 
-          // Apply membership styling
-          if (msg.message?.isMessageMembership) {
-            messageEl.classList.add('bg-green-500/30', 'border', 'border-green-500/50');
-          }
-
           // Extract elements
           const authorName = messageEl.querySelector('.author-name');
           const messageText = messageEl.querySelector('.message-text');
@@ -210,9 +203,10 @@
           MessageRenderer.renderAuthor(authorName, msg.author);
           MessageRenderer.renderAvatar(avatar, msg.author);
           MessageRenderer.renderBadges(badgeContainer, msg.author);
+          MessageRenderer.renderMembershipBadges(badgeContainer, msg.message);
           MessageRenderer.renderMessageContent(messageText, msg.message);
           MessageRenderer.renderLeaderboard(leaderboard, msg.leaderboard);
-          MessageRenderer.renderMembershipInfo(messageText, msg.message);
+          MessageRenderer.renderMembershipStyling(messageText, msg.message);
 
           return messageEl;
         },
@@ -232,8 +226,8 @@
           const isModerator = author.badges?.some((b) => b.type === 'moderator');
           const isMember = author.badges?.some((b) => b.type === 'member');
 
-          element.className = `author-name font-semibold ${colors.owner}`;
-          if (!isOwner && isModerator)
+          if (isOwner) element.className = `author-name font-semibold ${colors.owner}`;
+          else if (!isOwner && isModerator)
             element.className = `author-name font-semibold ${colors.moderator}`;
           else if (!isOwner && !isModerator && isMember)
             element.className = `author-name font-semibold ${colors.member}`;
@@ -279,7 +273,29 @@
           element.classList.add('bg-purple-600', 'text-white', 'font-bold');
         },
 
-        renderMembershipInfo: (element, message) => {
+        renderMembershipBadges: (badgeContainer, message) => {
+          if (!badgeContainer || !message?.isMessageMembership) return;
+
+          if (message.membershipStatus) {
+            const status = Utils.createElement(
+              'span',
+              'bg-purple-600/50 border-l-4 border-solid border-purple-600 text-white text-xs px-2 py-1 rounded-md font-bold text-black',
+              message.membershipStatus,
+            );
+            badgeContainer.appendChild(status);
+          }
+
+          if (message.membershipTier) {
+            const tier = Utils.createElement(
+              'span',
+              'bg-green-600/50 border-l-4 border-solid border-green-600 text-white text-xs px-2 py-1 rounded-md font-bold text-black',
+              message.membershipTier,
+            );
+            badgeContainer.appendChild(tier);
+          }
+        },
+
+        renderMembershipStyling: (element, message) => {
           if (!message?.isMessageMembership || !element) return;
 
           element.classList.add('membership-message');
@@ -287,34 +303,14 @@
           const container = element.parentElement;
           if (!container) return;
 
-          const infoContainer = Utils.createElement('div', 'flex items-center space-x-2 mt-1');
-
-          if (message.membershipStatus) {
-            const status = Utils.createElement(
-              'span',
-              'bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-bold',
-              message.membershipStatus,
-            );
-            infoContainer.appendChild(status);
-          }
-
-          if (message.membershipTier) {
-            const tier = Utils.createElement(
-              'span',
-              'bg-green-600 text-white text-xs px-2 py-1 rounded-full font-bold',
-              message.membershipTier,
-            );
-            infoContainer.appendChild(tier);
-          }
-
+          container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
           container.classList.add(
             'border-l-4',
             'border-solid',
-            'border-[rgb(34, 197, 94)]',
-            'bg-[rgba(34, 197, 94, 0.2)]',
+            'border-green-500',
+            'bg-green-500/20',
+            'shadow-green-500/50',
           );
-
-          container.appendChild(infoContainer);
         },
       };
 
@@ -326,6 +322,7 @@
           if (!ChatManager.container) return;
 
           messages.forEach((msg) => {
+            console.log(msg);
             const renderedMessage = MessageRenderer.renderMessage(msg);
             if (renderedMessage) {
               ChatManager.container.appendChild(renderedMessage);

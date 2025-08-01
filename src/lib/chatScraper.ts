@@ -80,6 +80,11 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
                   : (child as Element).getAttribute('alt');
 
                 return emoji || '';
+              } else if (
+                child.nodeType === Node.ELEMENT_NODE &&
+                (child as Element).tagName === 'A'
+              ) {
+                return (child as HTMLAnchorElement).textContent?.trim() || '';
               }
               return '';
             })
@@ -89,7 +94,8 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
         : '';
 
       const hasEmoji = emojis.length > 0;
-      const photoUrl = (node.querySelector('#img') as HTMLImageElement | null)?.src || '';
+      const photoUrl =
+        (node.querySelector('#author-photo img') as HTMLImageElement | null)?.src || '';
       const authorType = (node.getAttribute('author-type') as ChatAuthorRole) || 'viewer';
       const timestamp = node.querySelector('#timestamp')?.textContent?.trim() || '';
       const leaderboard = node

@@ -6,14 +6,12 @@ import type {
   ChatMessage,
   Emoji,
   Message,
-  ScrapeResult,
 } from './types/chat';
 import { filterNewMessages, trimSeenMessages } from './utils/messageProcessor';
 
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { initializeBrowserAndPage } from './utils/browser';
 import puppeteer from 'puppeteer-extra';
-import { scrapeChatMessages } from './lib/chatScraper_new';
 
 puppeteer.use(StealthPlugin());
 
@@ -87,6 +85,11 @@ export async function scrapeLiveChat(
                     : (child as Element).getAttribute('alt');
 
                   return emoji || '';
+                } else if (
+                  child.nodeType === Node.ELEMENT_NODE &&
+                  (child as Element).tagName === 'A'
+                ) {
+                  return (child as HTMLAnchorElement).textContent?.trim() || '';
                 }
                 return '';
               })

@@ -1,6 +1,6 @@
 import type { ChatMessage } from './types/chat';
 import { getLiveVideoIdFromUsername } from './utils/resolve';
-import { scrapeLiveChat } from './scrapper';
+import { scrapeLiveChat } from './scrapper_new';
 
 const clients = new Map<WebSocket, string>();
 const activeScrapers = new Map<string, boolean>();
@@ -33,7 +33,11 @@ Bun.serve({
       // Try to resolve username → videoId, fallback to input directly
       const liveId = (await getLiveVideoIdFromUsername(input)) || input;
       clients.set(ws as unknown as WebSocket, liveId);
-      console.log(`[${new Date().toISOString()}] ✅ Client connected for Live ID: ${liveId} (Total clients: ${clients.size})`);
+      console.log(
+        `[${new Date().toISOString()}] ✅ Client connected for Live ID: ${liveId} (Total clients: ${
+          clients.size
+        })`,
+      );
 
       // Start scraper only once per liveId
       if (!activeScrapers.has(liveId)) {
@@ -68,7 +72,11 @@ Bun.serve({
           }
 
           const broadcastEndTime = Date.now();
-          console.log(`[${new Date().toISOString()}] 📡 Broadcasted ${messages.length} messages to ${clientCount} clients in ${broadcastEndTime - broadcastStartTime}ms`);
+          console.log(
+            `[${new Date().toISOString()}] 📡 Broadcasted ${
+              messages.length
+            } messages to ${clientCount} clients in ${broadcastEndTime - broadcastStartTime}ms`,
+          );
         });
       }
     },
