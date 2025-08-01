@@ -1,22 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Live Chat Viewer</title>
-    <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+
+    <!-- CSS Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+
+    <!-- Custom Styles -->
     <style>
       body {
         font-size: 14px;
       }
-      /* Custom CSS for animations and additional styling */
+
+      /* Animations */
       .chat-message {
         animation: slideIn 0.3s ease-out;
       }
-
       @keyframes slideIn {
         from {
           opacity: 0;
@@ -28,17 +33,8 @@
         }
       }
 
-      /* Badge styling */
-      .badge {
-        display: inline-block;
-        padding: 0.15rem 0.3rem;
-        border-radius: 0.25rem;
-        font-size: 0.7rem;
-        font-weight: bold;
-        line-height: 1;
-        text-transform: uppercase;
-      }
-
+      /* Badge Components */
+      .badge,
       .leaderboard {
         display: inline-block;
         padding: 0.15rem 0.3rem;
@@ -49,32 +45,27 @@
         text-transform: uppercase;
       }
 
-      /* Membership styling - Superchat style */
+      /* Membership Styling */
       .membership-message {
-        /* background: rgba(34, 197, 94, 0.2);
-        border-left: 4px solid rgb(34, 197, 94); */
         padding-left: 0.5rem;
         padding-top: 0.25rem;
         padding-bottom: 0.25rem;
       }
 
-      .membership-duration {
+      .membership-badge {
         font-size: 0.6rem;
         margin-left: 0.2rem;
         opacity: 0.9;
         font-weight: bold;
-        color: inherit;
       }
 
-      /* Custom scrollbar */
+      /* Scrollbar Styling */
       .chat-container::-webkit-scrollbar {
         width: 6px;
       }
-
       .chat-container::-webkit-scrollbar-track {
         background: rgba(255, 255, 255, 0.1);
       }
-
       .chat-container::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.3);
         border-radius: 3px;
@@ -83,252 +74,299 @@
   </head>
 
   <body class="w-full h-screen overflow-hidden flex flex-col">
-    <!-- Chat Messages Container -->
+    <!-- Chat Container -->
     <div class="chat-container flex-1 overflow-y-auto p-3 space-y-3">
-      <!-- Sample Chat Messages -->
-      <div
-        class="chat-message bg-gray-800/80 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50 hidden"
-      >
-        <div class="flex items-start space-x-2">
-          <img
-            src="https://i.pravatar.cc/40?img=1"
-            alt="User"
-            class="w-8 h-8 rounded-full hidden avatar"
-          />
-          <div class="message-container">
-            <div class="flex items-center author">
+      <!-- Message Template -->
+      <div class="chat-message flex items-start space-x-2 hidden">
+        <img
+          src="https://i.pravatar.cc/40?img=1"
+          alt="User"
+          class="w-8 h-8 rounded-full hidden avatar"
+        />
+        <div
+          class="message-wrapper flex items-start space-x-2 bg-gray-800/80 rounded-lg p-3 text-white shadow-lg"
+        >
+          <div class="message-content">
+            <div class="message-header flex items-center space-x-1">
               <span class="author-name font-semibold text-gray-100"></span>
-              <span class="badge hidden space-x-1"></span>
-              <span class="leaderboard ml-1"></span>
+              <span class="badge-container hidden space-x-1"></span>
+              <span class="leaderboard"></span>
             </div>
-            <p class="text-sm mt-1 message"></p>
+            <p class="message-text text-sm mt-1"></p>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Application Script -->
     <script>
-      const videoId = 'putrirp';
-      const socket = new WebSocket(`ws://localhost:3000/live/${videoId}`);
-
-      socket.onopen = () => {
-        console.log('Connected to server');
+      // Configuration
+      const CONFIG = {
+        videoId: 'nastasiadeline',
+        maxMessages: 50,
+        serverUrl: 'ws://localhost:3000',
       };
+
+      // WebSocket connection
+      const socket = new WebSocket(`${CONFIG.serverUrl}/live/${CONFIG.videoId}`);
+
+      // Utility functions
+      const Utils = {
+        sanitizeText: (text) => text?.replace(/`/g, '').trim() || '',
+
+        createElement: (tag, className, textContent) => {
+          const element = document.createElement(tag);
+          if (className) element.className = className;
+          if (textContent) element.textContent = textContent;
+          return element;
+        },
+
+        replaceEmojis: (text, emojis) => {
+          if (!emojis?.length) return text;
+
+          return emojis.reduce((html, emoji) => {
+            if (!emoji.text || !emoji.url) return html;
+
+            const text = Utils.sanitizeText(emoji.text);
+            const url = Utils.sanitizeText(emoji.url);
+            const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            return html.replace(
+              new RegExp(escapedText, 'g'),
+              `<img src="${url}" alt="${text}" class="inline-block h-5 w-5 align-text-bottom">`,
+            );
+          }, text);
+        },
+      };
+
+      // Badge handler
+      const BadgeHandler = {
+        createBadge: (type, iconClass) => {
+          const badge = Utils.createElement('span', `text-${type}-500`);
+          badge.innerHTML = `<i class="${iconClass}"></i>`;
+          return badge;
+        },
+
+        processBadges: (author) => {
+          if (!author?.badges?.length) return [];
+
+          const badgeTypes = {
+            moderator: { icon: 'fa-solid fa-wrench', color: 'blue' },
+            member: { icon: '', color: 'green' },
+            verified: { icon: 'fa-regular fa-circle-check', color: 'gray' },
+          };
+
+          return author.badges
+            .map((badge) => {
+              const config = badgeTypes[badge.type];
+              if (!config) return null;
+
+              const element = Utils.createElement('span');
+              if (badge.url) {
+                element.innerHTML = `<img src="${Utils.sanitizeText(
+                  badge.url,
+                )}" alt="${Utils.sanitizeText(badge.text)}" class="inline-block">`;
+                element.className = 'p-0 bg-transparent';
+              } else {
+                element.textContent = Utils.sanitizeText(badge.text);
+                if (badge.type === 'moderator') {
+                  element.innerHTML = '<i class="fa-solid fa-wrench"></i>';
+                  element.className = 'text-blue-500';
+                } else if (badge.type === 'verified') {
+                  element.innerHTML = '<i class="fa-regular fa-circle-check"></i>';
+                }
+              }
+              return element;
+            })
+            .filter(Boolean);
+        },
+      };
+
+      // Message renderer
+      const MessageRenderer = {
+        renderMessage: (msg) => {
+          const template = document.querySelector('.chat-message');
+          if (!template) {
+            console.error('Message template not found');
+            return null;
+          }
+
+          const messageEl = template.cloneNode(true);
+          messageEl.classList.remove('hidden');
+
+          // Apply membership styling
+          if (msg.message?.isMessageMembership) {
+            messageEl.classList.add('bg-green-500/30', 'border', 'border-green-500/50');
+          }
+
+          // Extract elements
+          const authorName = messageEl.querySelector('.author-name');
+          const messageText = messageEl.querySelector('.message-text');
+          const badgeContainer = messageEl.querySelector('.badge-container');
+          const avatar = messageEl.querySelector('.avatar');
+          const leaderboard = messageEl.querySelector('.leaderboard');
+
+          // Render components
+          MessageRenderer.renderAuthor(authorName, msg.author);
+          MessageRenderer.renderAvatar(avatar, msg.author);
+          MessageRenderer.renderBadges(badgeContainer, msg.author);
+          MessageRenderer.renderMessageContent(messageText, msg.message);
+          MessageRenderer.renderLeaderboard(leaderboard, msg.leaderboard);
+          MessageRenderer.renderMembershipInfo(messageText, msg.message);
+
+          return messageEl;
+        },
+
+        renderAuthor: (element, author) => {
+          if (!element || !author) return;
+
+          element.textContent = Utils.sanitizeText(author.name);
+
+          const colors = {
+            owner: 'text-yellow-500',
+            moderator: 'text-blue-500',
+            member: 'text-green-500',
+          };
+
+          const isOwner = author.isOwner;
+          const isModerator = author.badges?.some((b) => b.type === 'moderator');
+          const isMember = author.badges?.some((b) => b.type === 'member');
+
+          element.className = `author-name font-semibold ${colors.owner}`;
+          if (!isOwner && isModerator)
+            element.className = `author-name font-semibold ${colors.moderator}`;
+          else if (!isOwner && !isModerator && isMember)
+            element.className = `author-name font-semibold ${colors.member}`;
+          else element.className = 'author-name font-semibold text-gray-100';
+        },
+
+        renderAvatar: (element, author) => {
+          if (!element || !author?.photo) return;
+
+          element.src = Utils.sanitizeText(author.photo);
+          element.classList.remove('hidden');
+        },
+
+        renderBadges: (element, author) => {
+          if (!element || !author?.badges?.length) {
+            element?.classList.add('hidden');
+            return;
+          }
+
+          element.innerHTML = '';
+          element.classList.remove('hidden');
+
+          const badges = BadgeHandler.processBadges(author);
+          badges.forEach((badge) => element.appendChild(badge));
+        },
+
+        renderMessageContent: (element, message) => {
+          if (!element || !message) return;
+
+          let content = Utils.sanitizeText(message.text);
+          content = Utils.replaceEmojis(content, message.emojis);
+          element.innerHTML = content;
+        },
+
+        renderLeaderboard: (element, rank) => {
+          if (!element || !rank) {
+            element?.classList.add('hidden');
+            return;
+          }
+
+          element.innerHTML = `<i class="fa-solid fa-crown"></i> ${Utils.sanitizeText(rank)}`;
+          element.classList.remove('hidden');
+          element.classList.add('bg-purple-600', 'text-white', 'font-bold');
+        },
+
+        renderMembershipInfo: (element, message) => {
+          if (!message?.isMessageMembership || !element) return;
+
+          element.classList.add('membership-message');
+
+          const container = element.parentElement;
+          if (!container) return;
+
+          const infoContainer = Utils.createElement('div', 'flex items-center space-x-2 mt-1');
+
+          if (message.membershipStatus) {
+            const status = Utils.createElement(
+              'span',
+              'bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-bold',
+              message.membershipStatus,
+            );
+            infoContainer.appendChild(status);
+          }
+
+          if (message.membershipTier) {
+            const tier = Utils.createElement(
+              'span',
+              'bg-green-600 text-white text-xs px-2 py-1 rounded-full font-bold',
+              message.membershipTier,
+            );
+            infoContainer.appendChild(tier);
+          }
+
+          container.classList.add(
+            'border-l-4',
+            'border-solid',
+            'border-[rgb(34, 197, 94)]',
+            'bg-[rgba(34, 197, 94, 0.2)]',
+          );
+
+          container.appendChild(infoContainer);
+        },
+      };
+
+      // Chat management
+      const ChatManager = {
+        container: document.querySelector('.chat-container'),
+
+        addMessages: (messages) => {
+          if (!ChatManager.container) return;
+
+          messages.forEach((msg) => {
+            const renderedMessage = MessageRenderer.renderMessage(msg);
+            if (renderedMessage) {
+              ChatManager.container.appendChild(renderedMessage);
+            }
+          });
+
+          ChatManager.scrollToBottom();
+          ChatManager.limitMessages();
+        },
+
+        scrollToBottom: () => {
+          if (ChatManager.container) {
+            ChatManager.container.scrollTop = ChatManager.container.scrollHeight;
+          }
+        },
+
+        limitMessages: () => {
+          if (!ChatManager.container) return;
+
+          while (ChatManager.container.children.length > CONFIG.maxMessages) {
+            ChatManager.container.removeChild(ChatManager.container.children[0]);
+          }
+        },
+
+        handleDisconnect: () => {
+          const chatList = document.getElementById('chat');
+          if (chatList) chatList.innerHTML = '<li>Live ended</li>';
+        },
+      };
+
+      // Event handlers
+      socket.onopen = () => console.log('Connected to server');
 
       socket.onmessage = (event) => {
         const messagesData = JSON.parse(event.data);
-        const chatContainer = document.querySelector('.chat-container');
-
-        // Pastikan elemen template ditemukan sebelum mencoba mengkloningnya
-        const itemMessageTemplate = document.querySelector('.chat-message');
-
-        if (!itemMessageTemplate) {
-          console.error('Error: Template element with class .chat-message not found.');
-          return; // Hentikan eksekusi jika template tidak ditemukan
-        }
-
-        messagesData.forEach((msg) => {
-          console.log(msg);
-          const newItemMessage = itemMessageTemplate.cloneNode(true); // Kloning template
-          newItemMessage.classList.remove('hidden'); // Jadikan terlihat
-
-          // Apply membership styling to entire message container if isMessageMembership is true
-          if (msg.message && msg.message.isMessageMembership) {
-            newItemMessage.classList.add('bg-green-500/30', 'border', 'border-green-500/50');
-          }
-
-          const authorName = newItemMessage.querySelector('.author-name');
-          const message = newItemMessage.querySelector('.message');
-          const badge = newItemMessage.querySelector('.badge');
-          const avatar = newItemMessage.querySelector('.avatar');
-          const leaderboard = newItemMessage.querySelector('.leaderboard');
-
-          // Handle avatar from author.photo
-          if (avatar && msg.author && msg.author.photo) {
-            avatar.src = msg.author.photo.replace(/`/g, '').trim();
-            // avatar.classList.remove('hidden');
-          }
-
-          // Handle badges from author.badges array - prioritize badges array over boolean flags
-          const hasOwnerBadge = msg.author && msg.author.isOwner;
-
-          // Check actual badges in the badges array instead of relying on boolean flags
-          const moderatorBadge =
-            msg.author &&
-            msg.author.badges &&
-            msg.author.badges.find((b) => b.type === 'moderator');
-          const memberBadge =
-            msg.author && msg.author.badges && msg.author.badges.find((b) => b.type === 'member');
-          const verifiedBadge =
-            msg.author && msg.author.badges && msg.author.badges.find((b) => b.type === 'verified');
-
-          // Check if user has any badges to display
-          const hasAnyBadge = msg.author && msg.author.badges && msg.author.badges.length > 0;
-
-          // Show badges based on actual badges array content
-          if (badge && hasAnyBadge) {
-            const badgesToShow = [];
-
-            // Always show moderator badge first if present in badges array
-            if (moderatorBadge) {
-              badgesToShow.push({ badge: moderatorBadge, type: 'moderator' });
-            }
-
-            // Show membership badge if present in badges array (can be combined with moderator)
-            if (memberBadge) {
-              badgesToShow.push({ badge: memberBadge, type: 'member' });
-            }
-
-            // Show verified badge if present in badges array (can be combined with moderator)
-            if (verifiedBadge) {
-              badgesToShow.push({ badge: verifiedBadge, type: 'verified' });
-            }
-
-            if (badgesToShow.length > 0) {
-              // Clear existing badge content and create multiple badges
-              badge.innerHTML = '';
-              badgesToShow.forEach((badgeData, index) => {
-                const badgeElement = document.createElement('span');
-
-                if (badgeData.badge.url) {
-                  const badgeUrl = badgeData.badge.url.replace(/`/g, '').trim();
-                  badgeElement.innerHTML = `<img src="${badgeUrl}" alt="${badgeData.badge.text}" class="inline-block">`;
-                  badgeElement.classList.add('p-0', 'bg-transparent');
-                } else {
-                  badgeElement.textContent = badgeData.badge.text.replace(/`/g, '').trim();
-                  badgeElement.classList.remove('p-0', 'bg-transparent');
-                }
-
-                // Set styling based on badge type - match CSS styling
-                if (badgeData.type === 'moderator') {
-                  badgeElement.innerHTML = '<i class="fa-solid fa-wrench"></i>';
-                  // badgeElement.classList.add('bg-blue-500', 'text-blue-500', 'py-0.5', 'px-1');
-                  badgeElement.classList.add('text-blue-500');
-                  // } else if (badgeData.type === 'member') {
-                  // badgeElement.classList.add('bg-green-500', 'text-white', 'py-0.5', 'px-1');
-                } else if (badgeData.type === 'verified') {
-                  badgeElement.innerHTML = '<i class="fa-regular fa-circle-check"></i>';
-                  // badgeElement.classList.add('bg-gray-600', 'text-white', 'py-0.5', 'px-1');
-                }
-
-                badge.appendChild(badgeElement);
-              });
-
-              badge.classList.remove('hidden');
-            } else {
-              badge.classList.add('hidden');
-            }
-          } else if (badge) {
-            // Hide badge if no membership, verified, or moderator status
-            badge.classList.add('hidden');
-          }
-
-          if (authorName) {
-            // const name =
-            //   msg.author && msg.author.name.includes('@')
-            //     ? msg.author.name.split('@')[1]
-            //     : msg.author.name;
-            authorName.textContent = msg.author.name;
-            // Remove all color classes
-            authorName.classList.remove(
-              'text-gray-100',
-              'text-green-500',
-              'text-blue-500',
-              'text-yellow-500',
-            );
-            if (hasOwnerBadge) {
-              authorName.classList.add('text-yellow-500');
-            } else if (moderatorBadge) {
-              authorName.classList.add('text-blue-500');
-            } else if (memberBadge) {
-              authorName.classList.add('text-green-500');
-            }
-          }
-          // Handle leaderboard ranking
-          if (leaderboard && msg.leaderboard) {
-            leaderboard.textContent = msg.leaderboard.replace(/`/g, '').trim();
-            leaderboard.classList.remove('hidden');
-            leaderboard.classList.add('bg-purple-600', 'text-white', 'font-bold');
-          } else if (leaderboard) {
-            leaderboard.classList.add('hidden');
-          }
-
-          if (message) {
-            let messageHtml = '';
-            if (msg.message) {
-              if (msg.message.text) {
-                messageHtml = msg.message.text;
-                if (msg.message.emojis && msg.message.emojis.length > 0) {
-                  msg.message.emojis.forEach((emoji) => {
-                    if (emoji.text && emoji.url) {
-                      const text = emoji.text.replace(/`/g, '').trim();
-                      const url = emoji.url.replace(/`/g, '').trim();
-                      const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                      const regex = new RegExp(escapedText, 'g');
-                      messageHtml = messageHtml.replace(
-                        regex,
-                        `<img src="${url}" alt="${text}" class="inline-block h-5 w-5 align-text-bottom">`,
-                      );
-                    }
-                  });
-                }
-              }
-            }
-            message.innerHTML = messageHtml;
-
-            // Apply membership styling and create membership badges
-            if (msg.message && msg.message.isMessageMembership) {
-              message.classList.add('membership-message');
-
-              // Create membership status and tier badges
-              const messageContainer = message.parentElement;
-              if (messageContainer) {
-                const membershipInfo = document.createElement('div');
-                membershipInfo.className = 'flex items-center space-x-2 mt-1';
-
-                if (msg.message.membershipStatus) {
-                  const statusBadge = document.createElement('span');
-                  statusBadge.textContent = msg.message.membershipStatus;
-                  statusBadge.className =
-                    'bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-bold';
-                  membershipInfo.appendChild(statusBadge);
-                }
-
-                if (msg.message.membershipTier) {
-                  const tierBadge = document.createElement('span');
-                  tierBadge.textContent = msg.message.membershipTier;
-                  tierBadge.className =
-                    'bg-green-600 text-white text-xs px-2 py-1 rounded-full font-bold';
-                  membershipInfo.appendChild(tierBadge);
-                }
-
-                messageContainer.classList.add(
-                  'border-l-4',
-                  'border-solid',
-                  'border-[rgb(34, 197, 94)]',
-                  'bg-[rgba(34, 197, 94, 0.2)]',
-                );
-
-                messageContainer.appendChild(membershipInfo);
-              }
-            }
-          }
-
-          chatContainer.appendChild(newItemMessage); // Tambahkan elemen baru ke daftar obrolan
-        });
-
-        // Auto scroll to bottom when new messages arrive
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        // Limit to 50 messages - remove oldest messages when exceeding 50
-        while (chatContainer.children.length > 50) {
-          chatContainer.removeChild(chatContainer.children[0]);
-        }
+        ChatManager.addMessages(messagesData);
       };
 
       socket.onclose = () => {
         console.log('Disconnected');
-        const chatList = document.getElementById('chat');
-        chatList.innerHTML = '<li>Live ended</li>';
+        ChatManager.handleDisconnect();
       };
     </script>
   </body>

@@ -27,7 +27,7 @@ export function trimSeenMessages(set: Set<string>, maxSize = 10000) {
       const it = set.values();
       for (let i = 0; i < toDelete; i++) {
         const id = it.next().value;
-        set.delete(id);
+        set.delete(id as string);
       }
     }
   }
