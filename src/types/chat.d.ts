@@ -32,6 +32,7 @@ export interface Badges {
 export interface ChatMessage {
   author: Author;
   message: Message;
+  leaderboard?: string | null;
   timestamp: string;
 }
 
