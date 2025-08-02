@@ -33,9 +33,15 @@
         }
       }
 
+      /* Membership Styling */
+      .membership-message {
+        padding-left: 0.5rem;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+      }
+
       /* Badge Components */
       .leaderboard {
-        display: inline-block;
         padding: 0.15rem 0.3rem;
         border-radius: 0.25rem;
         font-size: 0.7rem;
@@ -44,18 +50,53 @@
         text-transform: uppercase;
       }
 
-      /* Membership Styling */
-      .membership-message {
-        padding-left: 0.5rem;
-        padding-top: 0.25rem;
-        padding-bottom: 0.25rem;
-      }
-
       .membership-badge {
         font-size: 0.6rem;
         margin-left: 0.2rem;
         opacity: 0.9;
         font-weight: bold;
+      }
+
+      .superchat-amount {
+        font-size: 0.75rem;
+        /* color: #e74c3c; */
+        font-weight: 700;
+      }
+
+      .gradient-border {
+        position: relative;
+        background: linear-gradient(white, white) padding-box;
+        /* linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1) border-box; */
+        background-size: 200% 200%;
+      }
+
+      .gradient-border:before,
+      .gradient-border:after {
+        content: '';
+        position: absolute;
+        left: -2px;
+        top: -2px;
+        background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1);
+        background-size: 400%;
+        width: calc(100% + 4px);
+        height: calc(100% + 4px);
+        border-radius: 0.5rem;
+        z-index: -1;
+        animation: steam 20s linear infinite;
+      }
+      @keyframes steam {
+        0% {
+          background-position: 0 0;
+        }
+        50% {
+          background-position: 400% 0;
+        }
+        100% {
+          background-position: 0 0;
+        }
+      }
+      .gradient-border:after {
+        filter: blur(50px);
       }
 
       /* Scrollbar Styling */
@@ -88,18 +129,37 @@
           <div class="flex items-center author space-x-2">
             <span class="author-name font-semibold text-gray-100"></span>
             <span class="badge-container hidden space-x-2"></span>
-            <span class="leaderboard"></span>
+            <span class="leaderboard hidden"></span>
           </div>
           <p class="text-sm mt-1 message-text"></p>
         </div>
       </div>
+
+      <!-- Superchat Chat Messages -->
+      <!-- <div class="super-chat flex items-start space-x-2 text-black hidden">
+        <img
+          src="https://i.pravatar.cc/40?img=1"
+          alt="User"
+          class="w-8 h-8 rounded-full hidden avatar"
+        />
+        <div
+          class="super-chat-container bg-gray-800/80 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50 max-w-screen w-full"
+        >
+          <div class="flex items-center author space-x-2">
+            <span class="author-name font-semibold text-gray-100"></span>
+            <span class="badge-container hidden space-x-2"></span>
+            <span class="leaderboard"></span>
+          </div>
+          <p class="text-sm mt-1 super-chat-text"></p>
+        </div>
+      </div> -->
     </div>
 
     <!-- Application Script -->
     <script>
       // Configuration
       const CONFIG = {
-        videoId: 'putrirp',
+        videoId: 'putrirp', // !change this
         // videoId: 'TheJooomers',
         maxMessages: 50,
         serverUrl: 'ws://localhost:3000',
@@ -207,6 +267,7 @@
           MessageRenderer.renderMessageContent(messageText, msg.message);
           MessageRenderer.renderLeaderboard(leaderboard, msg.leaderboard);
           MessageRenderer.renderMembershipStyling(messageText, msg.message);
+          MessageRenderer.renderSuperChatMessage(messageText, msg.message);
 
           return messageEl;
         },
@@ -263,6 +324,7 @@
         },
 
         renderLeaderboard: (element, rank) => {
+          console.log('[DEBUG]: Leaderboard', rank);
           if (!element || !rank) {
             element?.classList.add('hidden');
             return;
@@ -296,12 +358,22 @@
         },
 
         renderMembershipStyling: (element, message) => {
-          if (!message?.isMessageMembership || !element) return;
-
           element.classList.add('membership-message');
 
           const container = element.parentElement;
           if (!container) return;
+
+          if (!message?.isMessageMembership || !element) {
+            container.classList.add('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
+            container.classList.remove(
+              'border-l-4',
+              'border-solid',
+              'border-green-500',
+              'bg-green-500/20',
+              'shadow-green-500/50',
+            );
+            return;
+          }
 
           container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
           container.classList.add(
@@ -311,6 +383,32 @@
             'bg-green-500/20',
             'shadow-green-500/50',
           );
+        },
+
+        renderSuperChatMessage: (element, message) => {
+          const container = element.parentElement;
+          if (!container) return;
+
+          if (!message?.isMessageSuperchat || !element) {
+            container.classList.add('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
+            container.classList.remove(
+              'gradient-border',
+              'bg-linear-to-r/hsl',
+              'from-indigo-500',
+              'to-teal-400',
+            );
+            return;
+          }
+
+          if (container.classList) {
+            container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
+            container.classList.add(
+              'gradient-border',
+              'bg-linear-to-r/hsl',
+              'from-indigo-500',
+              'to-teal-400',
+            );
+          }
         },
       };
 
