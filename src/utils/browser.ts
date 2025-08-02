@@ -1,6 +1,14 @@
 import type { PuppeteerExtra } from 'puppeteer-extra';
 import config from '../config';
 
+/**
+ * Initializes a browser instance and page for scraping YouTube live chat
+ * @param puppeteer - PuppeteerExtra instance for browser automation
+ * @param liveId - YouTube live stream ID
+ * @returns Object containing browser and page instances
+ * @property {Browser} browser - Puppeteer browser instance
+ * @property {Page} page - Browser page instance
+ */
 export async function initializeBrowserAndPage(puppeteer: PuppeteerExtra, liveId: string) {
   const browser = await puppeteer.launch({
     headless: true,

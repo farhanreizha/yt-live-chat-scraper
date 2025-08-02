@@ -4,6 +4,15 @@ import { filterNewMessages, trimSeenMessages } from './messageProcessor';
 import { SCRAPER_CONFIG } from '@/constants/scraper';
 import { filterValidMessages } from './messageExtractor';
 
+/**
+ * Sets up callback functions for processing new chat messages from a Puppeteer page
+ * @param page - Puppeteer Page instance to set up callbacks on
+ * @param seenMessages - Set containing IDs of previously processed messages
+ * @param callback - Function to handle new chat messages
+ * @param callback.messages - Array of new chat messages to process
+ * @param callback.offline - Boolean indicating if chat is offline
+ * @returns Promise that resolves when callbacks are set up
+ */
 export async function setupPageCallbacks(
   page: Page,
   seenMessages: Set<string>,

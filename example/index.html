@@ -157,8 +157,7 @@
     <script>
       // Configuration
       const CONFIG = {
-        videoId: 'putrirp', // !change this
-        // videoId: 'TheJooomers',
+        videoId: '8bit_PitajiPlayz', // !change this
         maxMessages: 50,
         serverUrl: 'ws://localhost:3000',
       };
@@ -386,7 +385,7 @@
           if (!container) return;
 
           if (!message?.isMessageSuperchat || !element) {
-            container.classList.add('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
+            container.classList.add('bg-gray-800/80', 'shadow-gray-800/50');
             container.classList.remove(
               'gradient-border',
               'bg-linear-to-r/hsl',
@@ -397,7 +396,7 @@
           }
 
           element.innerHTML = Utils.sanitizeText(message.text);
-          container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
+          container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50');
           container.classList.add(
             'gradient-border',
             'bg-linear-to-r/hsl',

@@ -5,11 +5,11 @@ import { injectChatObserver } from '@/utils/chatObserver';
 import { setupPageCallbacks } from '@/utils/pageCallback';
 
 /**
- * Memulai scraping live chat YouTube dengan Puppeteer.
- * Menggunakan MutationObserver untuk mendeteksi pesan baru secara real-time.
- *
- * @param liveId ID dari live video YouTube
- * @param callback Fungsi callback yang menerima pesan baru dan status offline
+ * Scrapes live chat messages from a YouTube live stream
+ * @param liveId - The YouTube live stream ID to scrape chat messages from
+ * @param callback - Callback function that receives an array of chat messages and offline status
+ * @returns Promise that resolves when scraping is initialized
+ * @throws Error if browser or page initialization fails
  */
 export async function scrapeLiveChat(
   liveId: string,

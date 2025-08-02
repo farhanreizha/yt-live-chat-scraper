@@ -1,3 +1,19 @@
+/**
+ * Retrieves the live video ID from a YouTube username's live stream page.
+ *
+ * @param username - The YouTube channel username (without the @ symbol)
+ * @returns A Promise that resolves to either:
+ *          - The video ID string (11 characters) if a live stream is found
+ *          - null if no live stream video ID could be found
+ *
+ * @example
+ * ```typescript
+ * const videoId = await getLiveVideoIdFromUsername('YouTubeChannel');
+ * if (videoId) {
+ *   console.log(`Found live stream: ${videoId}`);
+ * }
+ * ```
+ */
 export async function getLiveVideoIdFromUsername(username: string): Promise<string | null> {
   const response = await fetch(`https://www.youtube.com/@${username}/live`);
   const html = await response.text();

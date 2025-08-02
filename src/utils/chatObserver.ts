@@ -3,6 +3,10 @@ import type { Author, Badges, ChatMessage, Emoji, Message } from '@/types/chat';
 import type { Page } from 'puppeteer';
 import { SCRAPER_CONFIG } from '@/constants/scraper';
 
+/**
+ * Injects a chat observer into the YouTube live chat page to monitor and extract messages
+ * @param page - Puppeteer Page instance
+ */
 export async function injectChatObserver(page: Page): Promise<void> {
   await page.evaluate((config) => {
     const container = document.querySelector(config.CHAT_SELECTORS.CONTAINER);
@@ -14,6 +18,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
     const seenIds = new Set<string>();
 
     // Define all extraction functions within the page context
+    /**
+     * Extracts emoji text from an image element
+     * @param img - Image element containing emoji
+     * @returns Emoji text
+     */
     function extractEmojiText(img: Element): string {
       const emoji = img.getAttribute('data-emoji-id')
         ? img.getAttribute('shared-tooltip-text')
@@ -22,6 +31,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return emoji || '';
     }
 
+    /**
+     * Extracts message text from a message node, including emojis and links
+     * @param messageNode - Message container element
+     * @returns Formatted message text
+     */
     function extractMessageText(messageNode: Element | null): string {
       if (!messageNode) return '';
 
@@ -50,6 +64,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
         .trim();
     }
 
+    /**
+     * Extracts emoji information from a message node
+     * @param messageNode - Message container element
+     * @returns Array of emoji objects
+     */
     function extractEmojis(messageNode: Element | null): Emoji[] {
       if (!messageNode) return [];
 
@@ -70,6 +89,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return Array.from(emojiMap.values());
     }
 
+    /**
+     * Extracts badge information from an author node
+     * @param node - Author container element
+     * @returns Array of badge objects
+     */
     function extractBadges(node: Element): Badges[] {
       const authorBadges = node.querySelectorAll(config.CHAT_SELECTORS.AUTHOR.BADGES);
 
@@ -89,6 +113,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return Array.from(badgeMap.values());
     }
 
+    /**
+     * Extracts membership information from a message node
+     * @param node - Message container element
+     * @returns Membership information object
+     */
     function extractMembershipInfo(node: Element) {
       const isMessageMembership =
         node.tagName.toLowerCase() === 'yt-live-chat-membership-item-renderer';
@@ -104,6 +133,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       };
     }
 
+    /**
+     * Extracts metadata from a message node
+     * @param node - Message container element
+     * @returns Metadata object containing timestamp and leaderboard information
+     */
     function extractMetadata(node: Element) {
       const timestamp =
         node.querySelector(config.CHAT_SELECTORS.TIMESTAMP)?.textContent?.trim() || '';
@@ -114,6 +148,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return { timestamp, leaderboard };
     }
 
+    /**
+     * Extracts author information from a message node
+     * @param node - Message container element
+     * @returns Author object
+     */
     function extractAuthor(node: Element): Author {
       const authorName =
         node.querySelector(config.CHAT_SELECTORS.AUTHOR.NAME)?.textContent?.trim() || '';
@@ -133,6 +172,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       };
     }
 
+    /**
+     * Extracts Super Chat information from a message node
+     * @param node - Message container element
+     * @returns Super Chat information object
+     */
     function extractSuperChat(node: Element) {
       const isMessageSuperchat =
         node.tagName.toLowerCase() === 'yt-live-chat-paid-message-renderer';
@@ -146,6 +190,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       };
     }
 
+    /**
+     * Extracts complete message information from a message node
+     * @param node - Message container element
+     * @returns Message object
+     */
     function extractMessage(node: Element): Message {
       const messageNode = node.querySelector(config.CHAT_SELECTORS.MESSAGE);
       const text = extractMessageText(messageNode);
@@ -166,6 +215,11 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return baseMessage;
     }
 
+    /**
+     * Extracts a complete chat message from a DOM node
+     * @param node - Message container element
+     * @returns ChatMessage object or null if extraction fails
+     */
     function extractMessageFromNode(node: Element): ChatMessage | null {
       try {
         const author = extractAuthor(node);
@@ -183,6 +237,12 @@ export async function injectChatObserver(page: Page): Promise<void> {
       }
     }
 
+    /**
+     * Extracts all new messages from the chat container
+     * @param container - Chat container element
+     * @param seenIds - Set of already processed message IDs
+     * @returns Array of new chat messages
+     */
     function extractMessagesFromDOM(container: Element, seenIds: Set<string>): ChatMessage[] {
       const newMessages: ChatMessage[] = [];
       const nodes = container.querySelectorAll(config.CHAT_SELECTORS.MESSAGE_RENDERERS);

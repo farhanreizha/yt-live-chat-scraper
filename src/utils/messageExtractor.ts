@@ -6,6 +6,11 @@ import type { ChatMessage } from '../types/chat';
  * The actual extraction happens in the browser context via chatObserver.ts
  */
 
+/**
+ * Validates if a message object conforms to the ChatMessage type structure
+ * @param message - The message object to validate
+ * @returns A type predicate indicating if the message is a valid ChatMessage
+ */
 export function validateMessageStructure(message: any): message is ChatMessage {
   return (
     message &&
@@ -17,6 +22,11 @@ export function validateMessageStructure(message: any): message is ChatMessage {
   );
 }
 
+/**
+ * Sanitizes a chat message by trimming whitespace and normalizing spaces
+ * @param message - The chat message to sanitize
+ * @returns A new ChatMessage object with sanitized text content
+ */
 export function sanitizeMessage(message: ChatMessage): ChatMessage {
   return {
     ...message,
@@ -31,6 +41,11 @@ export function sanitizeMessage(message: ChatMessage): ChatMessage {
   };
 }
 
+/**
+ * Filters an array of messages to only include valid ChatMessage objects
+ * @param messages - Array of potential chat messages to filter
+ * @returns Array of validated and sanitized ChatMessage objects
+ */
 export function filterValidMessages(messages: any[]): ChatMessage[] {
   if (!Array.isArray(messages)) {
     console.warn('[VALIDATION] Received non-array messages:', typeof messages);
