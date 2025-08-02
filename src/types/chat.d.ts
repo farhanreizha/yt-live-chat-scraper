@@ -21,6 +21,9 @@ export type Message = {
   isMessageMembership: boolean;
   membershipTier: string | undefined | null;
   membershipStatus: string | undefined | null;
+  isMessageSuperchat: boolean;
+  superChatAmount: string | undefined | null;
+  superChatStyle: string | undefined | null;
 };
 
 export interface Badges {

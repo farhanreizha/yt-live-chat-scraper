@@ -1,3 +1,5 @@
+import type { Author, Badges, ChatMessage, Emoji, Message } from '@/types/chat';
+
 import type { Page } from 'puppeteer';
 import { SCRAPER_CONFIG } from '@/constants/scraper';
 
@@ -48,7 +50,7 @@ export async function injectChatObserver(page: Page): Promise<void> {
         .trim();
     }
 
-    function extractEmojis(messageNode: Element | null): any[] {
+    function extractEmojis(messageNode: Element | null): Emoji[] {
       if (!messageNode) return [];
 
       const emojiImgs = messageNode.querySelectorAll(config.CHAT_SELECTORS.EMOJI_IMAGES);
@@ -68,8 +70,8 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return Array.from(emojiMap.values());
     }
 
-    function extractBadges(node: Element): any[] {
-      const authorBadges = node.querySelectorAll(config.CHAT_SELECTORS.AUTHOR_BADGES);
+    function extractBadges(node: Element): Badges[] {
+      const authorBadges = node.querySelectorAll(config.CHAT_SELECTORS.AUTHOR.BADGES);
 
       const badgeMap = new Map<string, any>();
 
@@ -94,10 +96,10 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return {
         isMessageMembership,
         membershipTier: isMessageMembership
-          ? node.querySelector(config.CHAT_SELECTORS.MEMBERSHIP_TIER)?.textContent || ''
+          ? node.querySelector(config.CHAT_SELECTORS.MEMBERSHIP.TIER)?.textContent || ''
           : undefined,
         membershipStatus: isMessageMembership
-          ? node.querySelector(config.CHAT_SELECTORS.MEMBERSHIP_STATUS)?.textContent || ''
+          ? node.querySelector(config.CHAT_SELECTORS.MEMBERSHIP.STATUS)?.textContent || ''
           : undefined,
       };
     }
@@ -112,12 +114,12 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return { timestamp, leaderboard };
     }
 
-    function extractAuthor(node: Element): any {
+    function extractAuthor(node: Element): Author {
       const authorName =
-        node.querySelector(config.CHAT_SELECTORS.AUTHOR_NAME)?.textContent?.trim() || '';
+        node.querySelector(config.CHAT_SELECTORS.AUTHOR.NAME)?.textContent?.trim() || '';
       const photoUrl =
-        (node.querySelector(config.CHAT_SELECTORS.AUTHOR_PHOTO) as HTMLImageElement | null)
-          ?.src || '';
+        (node.querySelector(config.CHAT_SELECTORS.AUTHOR.PHOTO) as HTMLImageElement | null)?.src ||
+        '';
       const authorType = node.getAttribute('author-type') || 'viewer';
       const badges = extractBadges(node);
 
@@ -131,15 +133,30 @@ export async function injectChatObserver(page: Page): Promise<void> {
       };
     }
 
-    function extractMessage(node: Element): any {
+    function extractSuperChat(node: Element) {
+      const isMessageSuperchat =
+        node.tagName.toLowerCase() === 'yt-live-chat-paid-message-renderer';
+
+      return {
+        isMessageSuperchat,
+        superChatAmount: isMessageSuperchat
+          ? node.querySelector(config.CHAT_SELECTORS.SUPER_CHAT.AMOUNT)?.textContent || ''
+          : undefined,
+        superChatStyle: isMessageSuperchat ? node.getAttribute('style') : undefined,
+      };
+    }
+
+    function extractMessage(node: Element): Message {
       const messageNode = node.querySelector(config.CHAT_SELECTORS.MESSAGE);
       const text = extractMessageText(messageNode);
       const emojis = extractEmojis(messageNode);
       const membershipInfo = extractMembershipInfo(node);
+      const superchatInfo = extractSuperChat(node);
 
-      const baseMessage: any = {
+      const baseMessage: Message = {
         text,
         ...membershipInfo,
+        ...superchatInfo,
       };
 
       if (emojis.length > 0) {
@@ -149,7 +166,7 @@ export async function injectChatObserver(page: Page): Promise<void> {
       return baseMessage;
     }
 
-    function extractMessageFromNode(node: Element): any | null {
+    function extractMessageFromNode(node: Element): ChatMessage | null {
       try {
         const author = extractAuthor(node);
         const message = extractMessage(node);
@@ -166,8 +183,8 @@ export async function injectChatObserver(page: Page): Promise<void> {
       }
     }
 
-    function extractMessagesFromDOM(container: Element, seenIds: Set<string>): any[] {
-      const newMessages: any[] = [];
+    function extractMessagesFromDOM(container: Element, seenIds: Set<string>): ChatMessage[] {
+      const newMessages: ChatMessage[] = [];
       const nodes = container.querySelectorAll(config.CHAT_SELECTORS.MESSAGE_RENDERERS);
 
       nodes.forEach((node) => {

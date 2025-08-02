@@ -15,7 +15,7 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
     const nodes = Array.from(
       document.querySelectorAll(
-        'yt-live-chat-text-message-renderer, yt-live-chat-membership-item-renderer',
+        'yt-live-chat-text-message-renderer, yt-live-chat-membership-item-renderer, yt-live-chat-paid-message-renderer',
       ),
     );
 
@@ -111,6 +111,13 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
         ? node.querySelector('#header-primary-text')?.textContent
         : undefined;
 
+      const isMessageSuperchat =
+        node.tagName.toLowerCase() === 'yt-live-chat-paid-message-renderer';
+      const amountNode = isMessageSuperchat
+        ? node.querySelector('#purchase-amount')?.textContent
+        : undefined;
+      const style = isMessageSuperchat ? node.getAttribute('style') : undefined;
+
       const message: Message = hasEmoji
         ? {
             text: messageText,
@@ -118,12 +125,18 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
             isMessageMembership,
             membershipTier,
             membershipStatus,
+            isMessageSuperchat,
+            superChatAmount: amountNode,
+            superChatStyle: style,
           }
         : {
             text: messageText,
             isMessageMembership,
             membershipTier,
             membershipStatus,
+            isMessageSuperchat,
+            superChatAmount: amountNode,
+            superChatStyle: style,
           };
 
       const author: Author = {

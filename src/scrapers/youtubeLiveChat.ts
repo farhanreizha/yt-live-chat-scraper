@@ -1,8 +1,8 @@
 import type { ChatMessage } from '../types/chat';
 import { createBrowserInstance } from '@/utils/browserSetup';
-import { setupPageCallbacks } from '@/utils/pageCallback';
 import { initializeBrowserAndPage } from '@/utils/browser';
 import { injectChatObserver } from '@/utils/chatObserver';
+import { setupPageCallbacks } from '@/utils/pageCallback';
 
 /**
  * Memulai scraping live chat YouTube dengan Puppeteer.
@@ -22,9 +22,9 @@ export async function scrapeLiveChat(
 
   const seenMessages = new Set<string>();
 
-  // // Setup callback functions
+  // Setup callback functions
   await setupPageCallbacks(page, seenMessages, callback);
 
-  // // Inject mutation observer
+  // Inject mutation observer
   await injectChatObserver(page);
 }
