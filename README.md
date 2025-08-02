@@ -76,7 +76,7 @@ The `example/index.html` uses Tailwind CSS for styling or plain CSS and includes
   - [x] Real-time data streaming to connected clients
   - [ ] Offline status notifications
   - [ ] Automatic reconnection handling
-- [ ] **Super Chat & Super Sticker Integration**
-  - [ ] Donation amount tracking
-  - [ ] Leaderboard integration
-  - [ ] Priority message highlighting
+- [x] **Super Chat & Super Sticker Integration**
+  - [x] Donation amount tracking
+  - [x] Leaderboard integration
+  - [x] Priority message highlighting

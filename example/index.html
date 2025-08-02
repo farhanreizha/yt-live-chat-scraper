@@ -15,7 +15,7 @@
     <!-- Custom Styles -->
     <style>
       body {
-        font-size: 14px;
+        font-size: 16px;
       }
 
       /* Animations */
@@ -41,6 +41,7 @@
       }
 
       /* Badge Components */
+      .super-chat-amount,
       .leaderboard {
         padding: 0.15rem 0.3rem;
         border-radius: 0.25rem;
@@ -126,12 +127,15 @@
         <div
           class="message-container bg-gray-800/80 rounded-lg p-3 text-white shadow-lg shadow-gray-800/50 max-w-screen w-full"
         >
-          <div class="flex items-center author space-x-2">
-            <span class="author-name font-semibold text-gray-100"></span>
-            <span class="badge-container hidden space-x-2"></span>
-            <span class="leaderboard hidden"></span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center author space-x-2">
+              <span class="author-name font-semibold text-gray-100"></span>
+              <span class="badge-container hidden space-x-2"></span>
+              <span class="leaderboard hidden"></span>
+            </div>
+            <span class="super-chat-amount hidden"></span>
           </div>
-          <p class="text-sm mt-1 message-text"></p>
+          <p class="mt-1 message-text"></p>
         </div>
       </div>
 
@@ -159,7 +163,7 @@
     <script>
       // Configuration
       const CONFIG = {
-        videoId: 'putrirp', // !change this
+        videoId: 'TanaNona-JKT48V', // !change this
         // videoId: 'TheJooomers',
         maxMessages: 50,
         serverUrl: 'ws://localhost:3000',
@@ -187,10 +191,9 @@
 
             const text = Utils.sanitizeText(emoji.text);
             const url = Utils.sanitizeText(emoji.url);
-            const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-            return html.replace(
-              new RegExp(escapedText, 'g'),
+            return html.replaceAll(
+              new RegExp(text, 'g'),
               `<img src="${url}" alt="${text}" class="inline-block h-5 w-5 align-text-bottom">`,
             );
           }, text);
@@ -258,6 +261,7 @@
           const badgeContainer = messageEl.querySelector('.badge-container');
           const avatar = messageEl.querySelector('.avatar');
           const leaderboard = messageEl.querySelector('.leaderboard');
+          const superChatAmount = messageEl.querySelector('.super-chat-amount');
 
           // Render components
           MessageRenderer.renderAuthor(authorName, msg.author);
@@ -268,6 +272,7 @@
           MessageRenderer.renderLeaderboard(leaderboard, msg.leaderboard);
           MessageRenderer.renderMembershipStyling(messageText, msg.message);
           MessageRenderer.renderSuperChatMessage(messageText, msg.message);
+          MessageRenderer.renderSuperChatAmount(superChatAmount, msg.message);
 
           return messageEl;
         },
@@ -324,7 +329,6 @@
         },
 
         renderLeaderboard: (element, rank) => {
-          console.log('[DEBUG]: Leaderboard', rank);
           if (!element || !rank) {
             element?.classList.add('hidden');
             return;
@@ -358,12 +362,11 @@
         },
 
         renderMembershipStyling: (element, message) => {
-          element.classList.add('membership-message');
-
           const container = element.parentElement;
           if (!container) return;
 
           if (!message?.isMessageMembership || !element) {
+            element.classList.remove('membership-message');
             container.classList.add('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
             container.classList.remove(
               'border-l-4',
@@ -375,6 +378,7 @@
             return;
           }
 
+          element.classList.add('membership-message');
           container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
           container.classList.add(
             'border-l-4',
@@ -400,15 +404,26 @@
             return;
           }
 
-          if (container.classList) {
-            container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
-            container.classList.add(
-              'gradient-border',
-              'bg-linear-to-r/hsl',
-              'from-indigo-500',
-              'to-teal-400',
-            );
+          element.innerHTML = Utils.sanitizeText(message.text);
+          container.classList.remove('bg-gray-800/80', 'shadow-gray-800/50', 'text-white');
+          container.classList.add(
+            'gradient-border',
+            'bg-linear-to-r/hsl',
+            'from-indigo-500',
+            'to-teal-400',
+          );
+        },
+
+        renderSuperChatAmount: (element, message) => {
+          if (!element || !message.superChatAmount) {
+            element.classList.remove('text-red-500', 'text-xs', 'border', 'border-red-500');
+            element.classList.add('hidden');
+            return;
           }
+
+          element.innerHTML = Utils.sanitizeText(message.superChatAmount);
+          element.classList.remove('hidden');
+          element.classList.add('text-red-500', 'text-xs', 'border', 'border-red-500');
         },
       };
 
@@ -446,8 +461,9 @@
         },
 
         handleDisconnect: () => {
-          const chatList = document.getElementById('chat');
-          if (chatList) chatList.innerHTML = '<li>Live ended</li>';
+          if (!ChatManager.container) return;
+          const disconnectMessage = Utils.createElement('span', 'text-red-500', 'Live ended');
+          ChatManager.container.appendChild(disconnectMessage);
         },
       };
 
