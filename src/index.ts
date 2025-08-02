@@ -1,6 +1,8 @@
 import type { ChatMessage } from './types/chat';
 import { getLiveVideoIdFromUsername } from './utils/resolve';
-import { scrapeLiveChat } from './scrapper_new';
+import { scrapeLiveChat } from './scrapers/youtubeLiveChat';
+// import { scrapeLiveChat } from './scrapper_new';
+// import { scrapeLiveChat } from './scrapper';
 
 const clients = new Map<WebSocket, string>();
 const activeScrapers = new Map<string, boolean>();
