@@ -13,10 +13,7 @@ export async function setupPageCallbacks(
     try {
       // Used during message processing from browser context
       // Step 1: Validate and sanitize messages from browser context
-      console.log(`[VALIDATION] Received ${rawMessages.length} raw messages from browser`);
-
       const validMessages = filterValidMessages(rawMessages);
-      console.log(`[VALIDATION] ${validMessages.length} messages passed validation`);
 
       // Step 2: Filter out already seen messages
       const newMessages = await filterNewMessages(validMessages, seenMessages);
