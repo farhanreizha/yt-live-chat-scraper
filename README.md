@@ -2,7 +2,7 @@
 
 ## Documentation
 
-## This project provides a YouTube Live Chat Scraper with a WebSocket server for real-time chat message delivery. Below are instructions on how to set up and use the scraper.
+This project provides a YouTube Live Chat Scraper with a WebSocket server for real-time chat message delivery. Below are instructions on how to set up and use the scraper.
 
 ### 1. Running the Backend Scraper
 
