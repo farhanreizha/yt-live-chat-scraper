@@ -24,9 +24,10 @@ export async function injectChatObserver(page: Page): Promise<void> {
      * @returns Emoji text
      */
     function extractEmojiText(img: Element): string {
-      const emoji = img.getAttribute('data-emoji-id')
-        ? img.getAttribute('shared-tooltip-text')
-        : img.getAttribute('alt');
+      const emoji = img.getAttribute('shared-tooltip-text');
+      // const emoji = img.getAttribute('data-emoji-id')
+      //   ? img.getAttribute('shared-tooltip-text')
+      //   : img.getAttribute('alt');
 
       return emoji || '';
     }
@@ -76,7 +77,7 @@ export async function injectChatObserver(page: Page): Promise<void> {
       const emojiMap = new Map<string, any>();
 
       emojiImgs.forEach((img) => {
-        if (!img.getAttribute('data-emoji-id')) return;
+        // if (!img.getAttribute('data-emoji-id')) return;
 
         const text = img.getAttribute('shared-tooltip-text');
         const url = img.getAttribute('src');
