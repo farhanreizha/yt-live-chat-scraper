@@ -15,7 +15,7 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
   return await page.evaluate(() => {
     const nodes = Array.from(
       document.querySelectorAll(
-        'yt-live-chat-text-message-renderer, yt-live-chat-membership-item-renderer, yt-live-chat-paid-message-renderer',
+        'yt-live-chat-text-message-renderer, yt-live-chat-membership-item-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-paid-sticker-renderer, ytd-sponsorships-live-chat-gift-purchase-announcement-renderer',
       ),
     );
 
@@ -118,25 +118,51 @@ export async function scrapeChatMessages(page: Page): Promise<ScrapeResult> {
         : undefined;
       const style = isMessageSuperchat ? node.getAttribute('style') : undefined;
 
+      const isMessagePaidSticker =
+        node.tagName.toLowerCase() === 'yt-live-chat-paid-sticker-renderer';
+      const paidStickerAmount = isMessagePaidSticker
+        ? node.querySelector('#purchase-amount-chip')?.textContent
+        : undefined;
+      const paidStickerUrl = isMessagePaidSticker
+        ? (node.querySelector('#sticker img') as HTMLImageElement | null)?.src
+        : undefined;
+
+      const isMessagePaidMembership =
+        node.tagName.toLowerCase() ===
+        'ytd-sponsorships-live-chat-gift-purchase-announcement-renderer';
+      const giftedMemberships = isMessagePaidMembership
+        ? node.querySelector('#primary-text')?.textContent?.trim()
+        : undefined;
+
       const message: Message = hasEmoji
         ? {
             text: messageText,
             emojis,
             isMessageMembership,
+            isMessageSuperchat,
+            isMessagePaidSticker,
+            isMessagePaidMembership,
             membershipTier,
             membershipStatus,
-            isMessageSuperchat,
             superChatAmount: amountNode,
             superChatStyle: style,
+            paidStickerAmount,
+            paidStickerUrl,
+            giftedMemberships,
           }
         : {
             text: messageText,
             isMessageMembership,
+            isMessageSuperchat,
+            isMessagePaidSticker,
+            isMessagePaidMembership,
             membershipTier,
             membershipStatus,
-            isMessageSuperchat,
             superChatAmount: amountNode,
             superChatStyle: style,
+            paidStickerAmount,
+            paidStickerUrl,
+            giftedMemberships,
           };
 
       const author: Author = {

@@ -19,11 +19,16 @@ export type Message = {
   text: string;
   emojis?: Emoji[];
   isMessageMembership: boolean;
+  isMessageSuperchat: boolean;
+  isMessagePaidSticker: boolean;
+  isMessagePaidMembership: boolean;
   membershipTier: string | undefined | null;
   membershipStatus: string | undefined | null;
-  isMessageSuperchat: boolean;
   superChatAmount: string | undefined | null;
   superChatStyle: string | undefined | null;
+  paidStickerAmount: string | undefined | null;
+  paidStickerUrl: string | undefined | null;
+  giftedMemberships: string | undefined | null;
 };
 
 export interface Badges {

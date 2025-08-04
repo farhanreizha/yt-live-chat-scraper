@@ -192,6 +192,47 @@ export async function injectChatObserver(page: Page): Promise<void> {
     }
 
     /**
+     * Extracts Paid Sticker information from a message node
+     * @param node - Message container element
+     * @returns Paid Sticker information object
+     */
+    function extractPaidSticker(node: Element) {
+      const isMessagePaidSticker =
+        node.tagName.toLowerCase() === 'yt-live-chat-paid-sticker-renderer';
+
+      return {
+        isMessagePaidSticker,
+        paidStickerAmount: isMessagePaidSticker
+          ? node.querySelector(config.CHAT_SELECTORS.PAID_STICKER.AMOUNT)?.textContent || ''
+          : undefined,
+        paidStickerUrl: isMessagePaidSticker
+          ? (node.querySelector(config.CHAT_SELECTORS.PAID_STICKER.URL) as HTMLImageElement | null)
+              ?.src || ''
+          : undefined,
+      };
+    }
+
+    /**
+     * Extracts Paid Membership information from a message node
+     * @param node - Message container element
+     * @returns Paid Membership information object
+     */
+    function extractPaidMembership(node: Element) {
+      const isMessagePaidMembership =
+        node.tagName.toLowerCase() ===
+        'ytd-sponsorships-live-chat-gift-purchase-announcement-renderer';
+
+      return {
+        isMessagePaidMembership,
+        giftedMemberships: isMessagePaidMembership
+          ? node
+              .querySelector(config.CHAT_SELECTORS.PAID_MEMBERSHIP.GIFTED_MEMBERSHIPS)
+              ?.textContent?.trim() || ''
+          : undefined,
+      };
+    }
+
+    /**
      * Extracts complete message information from a message node
      * @param node - Message container element
      * @returns Message object
@@ -202,11 +243,15 @@ export async function injectChatObserver(page: Page): Promise<void> {
       const emojis = extractEmojis(messageNode);
       const membershipInfo = extractMembershipInfo(node);
       const superchatInfo = extractSuperChat(node);
+      const paidStickerInfo = extractPaidSticker(node);
+      const paidMembershipInfo = extractPaidMembership(node);
 
       const baseMessage: Message = {
         text,
         ...membershipInfo,
         ...superchatInfo,
+        ...paidStickerInfo,
+        ...paidMembershipInfo,
       };
 
       if (emojis.length > 0) {
