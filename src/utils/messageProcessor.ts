@@ -33,13 +33,12 @@ export async function filterNewMessages(messages: ChatMessage[], seenMessages: S
  * @param maxSize Maximum number of entries to keep in the set (default: 10000)
  */
 export function trimSeenMessages(set: Set<string>, maxSize = 10000) {
-  if (set.size > maxSize) {
-    const toDelete = set.size - maxSize;
-    const it = set.values();
-    for (let i = 0; i < toDelete; i++) {
-      const id = it.next().value;
-      set.delete(id as string);
-    }
+  if (set.size <= maxSize) return;
+  const toDelete = set.size - maxSize;
+  const it = set.values();
+  for (let i = 0; i < toDelete; i++) {
+    const id = it.next().value;
+    set.delete(id as string);
   }
 }
 
